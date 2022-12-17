@@ -6,9 +6,9 @@ build_from:
   armv7: "ghcr.io/home-assistant/armv7-base-debian:bullseye"
   i386: "ghcr.io/home-assistant/i386-base-debian:bullseye"
 labels:
-  org.opencontainers.image.title: "Home Assistant Add-on: Example add-on"
-  org.opencontainers.image.description: "Example add-on to use as a blueprint for new add-ons."
-  org.opencontainers.image.source: "https://github.com/home-assistant/addons-example"
+  org.opencontainers.image.title: "Home Assistant Add-on: Vcontrol add-on"
+  org.opencontainers.image.description: "Vcontrol add-on."
+  org.opencontainers.image.source: "https://github.com/Alexandre-io/homeassistant-vcontrol"
   org.opencontainers.image.licenses: "Apache License 2.0"
 args:
   TEMPIO_VERSION: "2021.09.0"

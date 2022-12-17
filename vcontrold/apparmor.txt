@@ -31,7 +31,7 @@ profile example flags=(attach_disconnected,mediate_deleted) {
   # Start new profile for service
   /usr/sbin/vcontrold cx -> vcontrold,
 
-  profile my_program flags=(attach_disconnected,mediate_deleted) {
+  profile vcontrold flags=(attach_disconnected,mediate_deleted) {
     #include <abstractions/base>
 
     # Receive signals from S6-Overlay
