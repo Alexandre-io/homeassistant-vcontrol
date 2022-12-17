@@ -23,3 +23,4 @@ ports:
   3002/tcp: 3002
 ports_description:
   3002/tcp: "Vcontrol deamon"
+apparmor: false
