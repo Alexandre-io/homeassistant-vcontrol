@@ -1,4 +1,4 @@
 configuration:
-  message:
-    name: Message
-    description: The message that will be printed to the log when starting this example add-on.
+  tty:
+    name: TTY
+    description: The name of the tty used to communicate with the hardware.

@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Vcontrol add-on
-version: "1.0.0"
+version: "1.0.1"
 slug: vcontrold
 description: Vcontrol add-on
 url: "https://github.com/Alexandre-io/homeassistant-vcontrol"
@@ -14,9 +14,9 @@ init: false
 map:
   - share:rw
 options:
-  message: "Hello world..."
+  tty: "/dev/ttyUSB0"
 schema:
-  message: "str?"
+  tty: "str?"
 image: "alexandreio/{arch}-homeassistant-vcontrol"
 usb: true
 ports:

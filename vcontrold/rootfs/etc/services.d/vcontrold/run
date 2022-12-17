@@ -5,13 +5,10 @@
 # ==============================================================================
 
 # Declare variables
-declare message
+declare configtty
 
 ## Get the 'message' key from the user config options.
-message=$(bashio::config 'message')
-
-## Print the message the user supplied, defaults to "Hello World..."
-bashio::log.info "${message:="Starting vcontrold..."}"
+configtty=$(bashio::config 'tty')
 
 ## Run your program
-exec /usr/sbin/vcontrold -n
+exec /usr/sbin/vcontrold -n -h $configtty

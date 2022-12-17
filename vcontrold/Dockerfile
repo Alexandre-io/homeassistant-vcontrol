@@ -11,15 +11,17 @@ RUN \
 RUN \
     apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y build-essential git cmake telnet libxml2-dev && \    
-    mkdir openv && \
-    cd openv && \
+    apt-get install -y build-essential git cmake telnet libxml2-dev && \
     git clone https://github.com/openv/vcontrold.git && \
     cd vcontrold && \
     mkdir build && \
     cd build && \
     cmake -DMANPAGES=OFF .. && \
-    make install
+    make install && \
+    make clean && \
+    apt-get purge -y --auto-remove build-essential git cmake && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Copy root filesystem
 COPY rootfs /
