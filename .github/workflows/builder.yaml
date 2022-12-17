@@ -94,9 +94,8 @@ jobs:
         if: env.BUILD_ARGS != '--test'
         uses: docker/login-action@v2.1.0
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: alexandreio
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build ${{ matrix.addon }} add-on
         if: steps.check.outputs.build_arch == 'true'
@@ -107,5 +106,5 @@ jobs:
             --${{ matrix.arch }} \
             --target /data/${{ matrix.addon }} \
             --image "${{ steps.check.outputs.image }}" \
-            --docker-hub "ghcr.io/${{ github.repository_owner }}" \
+            --docker-hub "alexandreio" \
             --addon

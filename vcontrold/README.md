@@ -1,6 +1,4 @@
-# Home Assistant Add-on: Example add-on
-
-_Example add-on to use as a blueprint for new add-ons._
+# Home Assistant Add-on: Vcontrol add-on
 
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]

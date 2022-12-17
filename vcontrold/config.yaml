@@ -1,9 +1,9 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
-name: Example add-on
-version: "1.2.0"
-slug: example
-description: Example add-on
-url: "https://github.com/home-assistant/addons-example/tree/main/example"
+name: Vcontrol add-on
+version: "1.0.0"
+slug: vcontrold
+description: Vcontrol add-on
+url: "https://github.com/Alexandre-io/homeassistant-vcontrol"
 arch:
   - armhf
   - armv7
@@ -18,3 +18,6 @@ options:
 schema:
   message: "str?"
 image: "ghcr.io/home-assistant/{arch}-addon-example"
+usb: true
+ports:
+  - 3002

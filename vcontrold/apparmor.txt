@@ -19,6 +19,7 @@ profile example flags=(attach_disconnected,mediate_deleted) {
   /etc/cont-finish.d/** rwix,
   /run/{,**} rwk,
   /dev/tty rw,
+  /dev/ttyUSB* rw,
 
   # Bashio
   /usr/lib/bashio/** ix,
@@ -28,7 +29,7 @@ profile example flags=(attach_disconnected,mediate_deleted) {
   /data/** rw,
 
   # Start new profile for service
-  /usr/bin/my_program cx -> my_program,
+  /usr/sbin/vcontrold cx -> vcontrold,
 
   profile my_program flags=(attach_disconnected,mediate_deleted) {
     #include <abstractions/base>
@@ -48,7 +49,9 @@ profile example flags=(attach_disconnected,mediate_deleted) {
     # 2. Add `complain` as a flag to this profile temporarily and run the addon
     # 3. Review the audit log with `journalctl _TRANSPORT="audit" -g 'apparmor="ALLOWED"'` and add other access as needed
     # Remember to remove the `complain` flag when you are done
-    /usr/bin/my_program r,
+    /usr/sbin/vcontrold r,
+    /usr/bin/vclient r,
+    /etc/vcontrold/** rw,
     /bin/bash rix,
     /bin/echo ix,
     /etc/passwd r,

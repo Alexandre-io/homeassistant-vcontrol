@@ -1,4 +1,4 @@
-# Home Assistant Add-on: Example add-on
+# Home Assistant Add-on: Vcontrol add-on
 
 ## How to use
 
