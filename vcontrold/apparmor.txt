@@ -1,6 +1,6 @@
 #include <tunables/global>
 
-profile example flags=(attach_disconnected,mediate_deleted) {
+profile vcontrold flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
   # Capabilities
@@ -35,7 +35,7 @@ profile example flags=(attach_disconnected,mediate_deleted) {
     #include <abstractions/base>
 
     # Receive signals from S6-Overlay
-    signal (receive) peer=*_example,
+    signal (receive) peer=*_vcontrol,
 
     # Access to options.json and other files within your addon
     /data/** rw,
