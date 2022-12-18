@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Vcontrol add-on
-version: "1.0.1"
+version: "1.0.2"
 slug: vcontrold
 description: Vcontrol add-on
 url: "https://github.com/Alexandre-io/homeassistant-vcontrol"
@@ -11,8 +11,6 @@ arch:
   - amd64
   - i386
 init: false
-map:
-  - share:rw
 options:
   tty: "/dev/ttyUSB0"
 schema:
@@ -22,3 +20,8 @@ usb: true
 apparmor: false
 services:
   - mqtt:need
+devices:
+  - /dev/ttyUSB0
+  - /dev/ttyUSB1
+  - /dev/ttyUSB2
+  - /dev/ttyUSB3
