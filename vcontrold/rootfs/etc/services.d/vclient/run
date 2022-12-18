@@ -1,0 +1,23 @@
+#!/usr/bin/with-contenv bashio
+# ==============================================================================
+# Start the example service
+# s6-overlay docs: https://github.com/just-containers/s6-overlay
+# ==============================================================================
+
+## Fetch MQTT credentials
+if ! bashio::services.available "mqtt"; then
+    bashio::log.error "No internal MQTT service found"
+else
+    bashio::log.info "MQTT service found, fetching credentials ..."
+    export MQTT_HOST=$(bashio::services mqtt "host")
+    export MQTT_PORT=$(bashio::services mqtt "port")
+    export MQTT_USER=$(bashio::services mqtt "username")
+    export MQTT_PASSWORD=$(bashio::services mqtt "password")
+    export MQTT_TOPIC="openv"
+
+    ## Run your program
+    while sleep 10; do
+        vclient -h 127.0.0.1 -p 3002 -f /etc/vcontrold/1_mqtt_commands.txt -t /etc/vcontrold/2_mqtt.tmpl -x /etc/vcontrold/3_mqtt_pub.sh
+        bashio::log.info "Looping vclient..."
+    done
+fi

@@ -1,0 +1,12 @@
+
+getTempA
+getTempWWist
+getTempWWsoll
+getTempKist
+getTempKsoll
+getPumpeSollM1
+getNeigungM1
+getNiveauM1
+getBrennerStunden1
+unit off
+getError0

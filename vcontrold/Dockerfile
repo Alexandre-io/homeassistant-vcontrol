@@ -11,7 +11,7 @@ RUN \
 RUN \
     apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y build-essential git cmake telnet libxml2-dev && \
+    apt-get install -y build-essential git cmake telnet libxml2-dev mosquitto-clients && \
     git clone https://github.com/openv/vcontrold.git && \
     cd vcontrold && \
     mkdir build && \
@@ -19,11 +19,11 @@ RUN \
     cmake -DMANPAGES=OFF .. && \
     make install && \
     make clean && \
+    cd .. && \
+    cd .. && \
     apt-get purge -y --auto-remove build-essential git cmake && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* vcontrold
 
 # Copy root filesystem
 COPY rootfs /
-
-EXPOSE 3002

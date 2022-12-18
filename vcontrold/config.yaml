@@ -19,8 +19,6 @@ schema:
   tty: "str?"
 image: "alexandreio/{arch}-homeassistant-vcontrol"
 usb: true
-ports:
-  3002/tcp: 3002
-ports_description:
-  3002/tcp: "Vcontrol deamon"
 apparmor: false
+services:
+  - mqtt:need
