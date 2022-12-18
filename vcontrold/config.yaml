@@ -19,14 +19,8 @@ options:
 schema:
   tty: "str?"
 image: "alexandreio/{arch}-homeassistant-vcontrol"
-usb: true
-uart: true
 apparmor: false
 kernel_modules: true
+full_access: true
 services:
   - mqtt:need
-devices:
-  - /dev/ttyUSB0:/dev/ttyUSB0:rwm
-  - /dev/ttyUSB1:/dev/ttyUSB1:rwm
-  - /dev/ttyUSB2:/dev/ttyUSB2:rwm
-  - /dev/ttyUSB3:/dev/ttyUSB3:rwm
