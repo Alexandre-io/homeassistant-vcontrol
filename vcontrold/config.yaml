@@ -11,6 +11,9 @@ arch:
   - amd64
   - i386
 init: false
+map:
+  - config:rw
+  - share:rw
 options:
   tty: "/dev/ttyUSB0"
 schema:
@@ -19,6 +22,7 @@ image: "alexandreio/{arch}-homeassistant-vcontrol"
 usb: true
 uart: true
 apparmor: false
+kernel_modules: true
 services:
   - mqtt:need
 devices:
