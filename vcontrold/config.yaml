@@ -21,7 +21,7 @@ apparmor: false
 services:
   - mqtt:need
 devices:
-  - /dev/ttyUSB0
-  - /dev/ttyUSB1
-  - /dev/ttyUSB2
-  - /dev/ttyUSB3
+  - /dev/ttyUSB0:/dev/ttyUSB0:rwm
+  - /dev/ttyUSB1:/dev/ttyUSB1:rwm
+  - /dev/ttyUSB2:/dev/ttyUSB2:rwm
+  - /dev/ttyUSB3:/dev/ttyUSB3:rwm
