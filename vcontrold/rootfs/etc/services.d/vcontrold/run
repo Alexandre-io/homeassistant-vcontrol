@@ -11,4 +11,4 @@ declare configtty
 configtty=$(bashio::config 'tty')
 
 ## Run your program
-exec /usr/sbin/vcontrold -n -d $configtty
+exec /usr/sbin/vcontrold -n -U root -d $configtty
