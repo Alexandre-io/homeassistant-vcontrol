@@ -17,6 +17,7 @@ schema:
   tty: "str?"
 image: "alexandreio/{arch}-homeassistant-vcontrol"
 usb: true
+uart: true
 apparmor: false
 services:
   - mqtt:need
