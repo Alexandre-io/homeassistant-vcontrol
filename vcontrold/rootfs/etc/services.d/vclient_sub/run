@@ -17,12 +17,11 @@ else
 
     ## Run your program
     while true ; do
-        mosquitto_sub -v -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t $MQTT_TOPIC | while read -r payload
+        mosquitto_sub -v -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t "$MQTT_TOPIC/#" | while read -r payload
         do
             # Here is the callback to execute whenever you receive a message:
             topic=$(echo $payload | cut -d' ' -f1)
             value=$(echo $payload | cut -d' ' -f2)
-            bashio::log.debug "Rx MQTT: [${topic}]: ${value}"
             if [[ $topic =~ "/set" ]]; then
                 command=$(echo $topic | cut -d'/' -f2)
                 bashio::log.info "Sending command: [${command}]: ${value}"
