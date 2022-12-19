@@ -23,9 +23,8 @@ else
             topic=$(echo $payload | cut -d' ' -f1)
             value=$(echo $payload | cut -d' ' -f2)
             echo "Rx MQTT: [${topic}]: ${value}"
-            if [[ $topic =~ "/set_" ]]; then
-                settopic=$(echo $topic | cut -d'/' -f2)
-                command=$(echo $settopic | cut -d'_' -f2)
+            if [[ $topic =~ "/set" ]]; then
+                command=$(echo $topic | cut -d'/' -f2)
                 vclient -h 127.0.0.1 -p 3002 -c "${command} ${value}"
             fi
         done
