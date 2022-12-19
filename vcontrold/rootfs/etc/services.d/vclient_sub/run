@@ -22,9 +22,10 @@ else
             # Here is the callback to execute whenever you receive a message:
             topic=$(echo $payload | cut -d' ' -f1)
             value=$(echo $payload | cut -d' ' -f2)
-            echo "Rx MQTT: [${topic}]: ${value}"
+            bashio::log.debug "Rx MQTT: [${topic}]: ${value}"
             if [[ $topic =~ "/set" ]]; then
                 command=$(echo $topic | cut -d'/' -f2)
+                bashio::log.info "Sending command: [${command}]: ${value}"
                 vclient -h 127.0.0.1 -p 3002 -c "${command} ${value}"
             fi
         done
