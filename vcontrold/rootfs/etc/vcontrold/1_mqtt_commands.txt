@@ -1,4 +1,3 @@
-
 getTempA
 getTempWWist
 getTempWWsoll
@@ -8,5 +7,4 @@ getPumpeSollM1
 getNeigungM1
 getNiveauM1
 getBrennerStunden1
-unit off
 getError0
