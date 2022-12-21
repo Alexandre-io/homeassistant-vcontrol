@@ -5,10 +5,40 @@
 # ==============================================================================
 
 # Declare variables
-declare configtty
+declare config_tty
+declare config_commands
 
 ## Get the 'message' key from the user config options.
-configtty=$(bashio::config 'tty')
+config_tty=$(bashio::config 'tty')
+config_deviceid=$(bashio::config 'device_id')
+config_commands=$(bashio::config 'commands')
+
+# Cleanup scripts
+rm /etc/vcontrold/1_mqtt_commands.txt
+rm /etc/vcontrold/2_mqtt.tmpl
+echo '#!/bin/sh' > /etc/vcontrold/2_mqtt.tmpl
+
+# Configure scripts
+commands_array=(`echo $config_commands | tr '|' ' '`)
+i=0
+for command in "${commands_array[@]}"
+do
+   :
+    ((i=i+1))
+    cmd=$(echo $command | cut -d':' -f1)
+    type=$(echo $command | cut -d':' -f2)
+
+    echo "Setup command ${i}: ${cmd} with type ${type}"
+    echo $cmd >> /etc/vcontrold/1_mqtt_commands.txt
+
+    R=$"$i"
+    if [[ $type == "STRING" ]]; then
+        R='"$R'$i'"'
+    fi
+
+    echo 'mosquitto_pub -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t $MQTT_TOPIC/$C'$i' -m '$R'' >> /etc/vcontrold/2_mqtt.tmpl
+
+done
 
 ## Run your program
-exec /usr/sbin/vcontrold -n -U root -d $configtty
+exec /usr/sbin/vcontrold -n -U root -d $config_tty -x "vcontrold-$config_deviceid.xml"

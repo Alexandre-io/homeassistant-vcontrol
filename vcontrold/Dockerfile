@@ -2,6 +2,8 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
+ENV VCONTROLD_VERSION "v0.98.12"
+
 # Execute during the build of the image
 ARG TEMPIO_VERSION BUILD_ARCH
 RUN \
@@ -12,7 +14,7 @@ RUN \
     apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y build-essential git cmake telnet libxml2-dev mosquitto-clients && \
-    git clone https://github.com/openv/vcontrold.git && \
+    git clone --depth 1 --branch $VCONTROLD_VERSION https://github.com/openv/vcontrold.git && \
     cd vcontrold && \
     mkdir build && \
     cd build && \

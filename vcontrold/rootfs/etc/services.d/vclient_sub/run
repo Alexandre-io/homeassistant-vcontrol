@@ -4,6 +4,9 @@
 # s6-overlay docs: https://github.com/just-containers/s6-overlay
 # ==============================================================================
 
+declare refresh_rate
+refresh_rate=$(bashio::config 'refresh')
+
 ## Fetch MQTT credentials
 if ! bashio::services.available "mqtt"; then
     bashio::log.error "No internal MQTT service found"
@@ -28,6 +31,6 @@ else
                 vclient -h 127.0.0.1 -p 3002 -o /dev/stdout -c "${command} ${value}"
             fi
         done
-        sleep 10 
+        sleep refresh_rate 
     done
 fi
