@@ -15,12 +15,50 @@ options:
   tty: "/dev/ttyUSB0"
   refresh: 30
   device_id: 2098
-  commands: "getTempA:FLOAT|getTempWWist:FLOAT|getTempWWsoll:FLOAT|getTempKist:FLOAT|getTempKsoll:FLOAT|getTempVListM2:FLOAT|getTempKol:FLOAT|getTempSpu:FLOAT|getTempRaumNorSollM1:FLOAT|getTempRaumNorSollM2:FLOAT|getTempRaumRedSollM1:FLOAT|getTempRaumRedSollM2:FLOAT|getBrennerStatus:FLOAT|getBrennerStarts:FLOAT|getBrennerStunden1:FLOAT|getBrennerStunden2:FLOAT|getPumpeStatusM1:FLOAT|getPumpeStatusSp:FLOAT|getPumpeStatusZirku:FLOAT|getPumpeStatusM2:FLOAT|getMischerM1:FLOAT|getMischerM2:FLOAT|getMischerM3:FLOAT|getError0:STRING|getError1:STRING|getError2:STRING|getError3:STRING|getError4:STRING|getError5:STRING|getError6:STRING|getError7:STRING|getError8:STRING|getError9:STRING|getNeigungM1:FLOAT|getNeigungM2:FLOAT|getNiveauM1:FLOAT|getNiveauM2:FLOAT"
+  commands:
+    - getTempA:FLOAT
+    - getTempWWist:FLOAT
+    - getTempWWsoll:FLOAT
+    - getTempKist:FLOAT
+    - getTempKsoll:FLOAT
+    - getTempVListM2:FLOAT
+    - getTempKol:FLOAT
+    - getTempSpu:FLOAT
+    - getTempRaumNorSollM1:FLOAT
+    - getTempRaumNorSollM2:FLOAT
+    - getTempRaumRedSollM1:FLOAT
+    - getTempRaumRedSollM2:FLOAT
+    - getBrennerStatus:FLOAT
+    - getBrennerStarts:FLOAT
+    - getBrennerStunden1:FLOAT
+    - getBrennerStunden2:FLOAT
+    - getPumpeStatusM1:FLOAT
+    - getPumpeStatusSp:FLOAT
+    - getPumpeStatusZirku:FLOAT
+    - getPumpeStatusM2:FLOAT
+    - getMischerM1:FLOAT
+    - getMischerM2:FLOAT
+    - getMischerM3:FLOAT
+    - getError0:STRING
+    - getError1:STRING
+    - getError2:STRING
+    - getError3:STRING
+    - getError4:STRING
+    - getError5:STRING
+    - getError6:STRING
+    - getError7:STRING
+    - getError8:STRING
+    - getError9:STRING
+    - getNeigungM1:FLOAT
+    - getNeigungM2:FLOAT
+    - getNiveauM1:FLOAT
+    - getNiveauM2:FLOAT
 schema:
-  tty: "device"
+  tty: "str"
   refresh: "int"
   device_id: "int"
-  commands: "list"
+  commands: 
+    - str
 image: "alexandreio/{arch}-homeassistant-vcontrol"
 usb: true
 apparmor: false
