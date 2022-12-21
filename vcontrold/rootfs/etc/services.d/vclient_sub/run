@@ -31,6 +31,6 @@ else
                 vclient -h 127.0.0.1 -p 3002 -o /dev/stdout -c "${command} ${value}"
             fi
         done
-        sleep refresh_rate 
+        sleep $refresh_rate 
     done
 fi

@@ -19,7 +19,7 @@ else
     export MQTT_TOPIC="openv"
 
     ## Run your program
-    while sleep refresh_rate; do
+    while sleep $refresh_rate; do
         vclient -h 127.0.0.1 -p 3002 -f /etc/vcontrold/1_mqtt_commands.txt -t /etc/vcontrold/2_mqtt.tmpl -x /etc/vcontrold/3_mqtt_pub.sh
         bashio::log.info "Looping vclient..."
     done
