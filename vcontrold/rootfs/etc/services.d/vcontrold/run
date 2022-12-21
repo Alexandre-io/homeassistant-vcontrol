@@ -41,4 +41,4 @@ do
 done
 
 ## Run your program
-exec /usr/sbin/vcontrold -n -U root -d $config_tty -x "vcontrold-$config_deviceid.xml"
+exec /usr/sbin/vcontrold -n -U root -d $config_tty -x "/etc/vcontrold/vcontrold-$config_deviceid.xml"
