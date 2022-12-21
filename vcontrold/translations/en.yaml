@@ -1,13 +1,13 @@
 configuration:
   tty:
-    name: TTY
-    description: The name of the tty used to communicate with the hardware.
+    name: "TTY"
+    description: "The name of the tty used to communicate with the hardware."
   refresh:
-    name: Refresh rate
-    description: The waiting time between two executions.
+    name: "Refresh rate"
+    description: "The waiting time between two executions."
   device_id:
-    name: Device ID
-    description: The device identifier. Must be `2053` for GWG protocol or `2098` for KW2 protocol.
+    name: "Device ID"
+    description: "The device identifier. Must be `2053` for GWG protocol or `2098` for KW2 protocol."
   commands:
-    name: Commands
-    description: List of commands to send (Format: `command1:TYPE,command2:TYPE` where `TYPE`is `FLOAT` or `STRING`).
+    name: "Commands"
+    description: "List of commands to send (Format: `command1:TYPE,command2:TYPE` where `TYPE`is `FLOAT` or `STRING`)."
