@@ -2,7 +2,7 @@
 
 ## 1.3.0
 
-- Add configurations
+- Add configs
 
 ## 1.2.3
 
