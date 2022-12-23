@@ -31,7 +31,7 @@ do
     echo "Setup command ${i}: ${cmd} with type ${type}"
     echo $cmd >> /etc/vcontrold/1_mqtt_commands.txt
 
-    R=$"$i"
+    R='$'$i''
     if [[ $type == "STRING" ]]; then
         R='"$R'$i'"'
     fi
