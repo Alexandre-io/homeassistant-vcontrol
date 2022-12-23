@@ -15,7 +15,7 @@
         <syslog>n</syslog>
         <debug>n</debug>
       </logging>
-      <device ID="2053"/>
+      <device ID="2094"/>
     </config>
   </unix>
   <units>

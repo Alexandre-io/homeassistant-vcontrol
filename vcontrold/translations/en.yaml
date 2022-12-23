@@ -7,7 +7,7 @@ configuration:
     description: "The waiting time between two executions."
   device_id:
     name: "Device ID"
-    description: "The device identifier. Must be `2053` for GWG protocol or `2098` for KW2 protocol."
+    description: "The device identifier. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
   commands:
     name: "Commands"
-    description: "List of commands to send (Format: `command1:TYPE,command2:TYPE` where `TYPE`is `FLOAT` or `STRING`)."
+    description: "List of commands to send. (Format: `command1:TYPE,command2:TYPE` where `TYPE` must be `FLOAT` or `STRING`)"

@@ -6,9 +6,9 @@
         <tty>/dev/ttyUSB0</tty>
       </serial>
       <net>
-         <!-- if no address is given, daemon will listen on all found interfaces -->
-         <!-- <listen>localhost</listen> -->
-          <port>3002</port>
+        <!-- if no address is given, daemon will listen on all found interfaces -->
+        <!-- <listen>localhost</listen> -->
+        <port>3002</port>
       </net>
       <logging>
         <file>/dev/stdout</file>
@@ -22,6 +22,12 @@
     <unit name="Temperatur">
       <abbrev>UT</abbrev>
       <calc get="V/10" set="V*10"/>
+      <type>short</type>
+      <entity>Grad Celsius</entity>
+    </unit>
+    <unit name="Temperatur100">
+      <abbrev>UTH</abbrev>
+      <calc get="V/100" set="V*100"/>
       <type>short</type>
       <entity>Grad Celsius</entity>
     </unit>
@@ -61,6 +67,18 @@
       <type>int</type>
       <entity/>
     </unit>
+    <unit name="Volumenstrom">
+      <abbrev>VS</abbrev>
+      <calc get="V" set="V"/>
+      <type>ushort</type>
+      <entity>l/h</entity>
+    </unit>
+    <unit name="Counter liter">
+      <abbrev>COL</abbrev>
+      <calc get="V/1000" set="V*1000"/>
+      <type>int</type>
+      <entity/>
+    </unit>
     <unit name="Prozent">
       <abbrev>PR</abbrev>
       <calc get="V/2" set="V*2"/>
@@ -70,6 +88,18 @@
     <unit name="Prozent 1 Byte ganzzahlig">
       <abbrev>PR1</abbrev>
       <calc get="V" set="V"/>
+      <type>uchar</type>
+      <entity>%</entity>
+    </unit>
+    <unit name="Prozent zweites Byte ganzzahlig (Pumpe)">
+      <abbrev>PR2</abbrev>
+      <calc get="B1" set="B1"/>
+      <type>uchar</type>
+      <entity>%</entity>
+    </unit>
+    <unit name="Prozent erstes Byte">
+      <abbrev>PR3</abbrev>
+      <calc get="V/2" set="V*2"/>
       <type>uchar</type>
       <entity>%</entity>
     </unit>
@@ -88,6 +118,9 @@
       <type>enum</type>
       <enum bytes="00" text="0"/>
       <enum bytes="01" text="1"/>
+      <!-- At least for device 20CB the heating circuit pump returns
+           status 03 when it's on and the heating runs in in night mode -->
+      <enum bytes='03' text='2'/>
       <enum text="NOT OK"/>
     </unit>
     <unit name="BetriebsArt">
@@ -96,7 +129,7 @@
       <enum bytes="00" text="WW"/>
       <enum bytes="01" text="RED"/>
       <enum bytes="02" text="NORM"/>
-      <enum bytes="04" text="H+WW"/>
+      <enum bytes="04" text="H+WW FS"/>
       <enum bytes="03" text="H+WW"/>
       <enum bytes="05" text="ABSCHALT"/>
       <enum text="UNKNOWN"/>
@@ -135,6 +168,7 @@
       <enum bytes="9A" text="Solar: Unterbrechung Kollektortemperatursensor"/>
       <enum bytes="9B" text="Solar: Unterbrechung Sensor S3"/>
       <enum bytes="9C" text="Solar: Unterbrechung Speichertemperatursensor"/>
+      <enum bytes='9E' text='Solar: Zu geringer/kein Volumenstrom oder Temperaturwächter ausgelöst'/>
       <enum bytes="9F" text="Solar: Fehlermeldung Solarteil (siehe Solarregler)"/>
       <enum bytes="A7" text="Bedienteil defekt"/>
       <enum bytes="B0" text="Kurzschluss Abgastemperatursensor"/>
@@ -185,9 +219,15 @@
       <abbrev>DT</abbrev>
       <type>enum</type>
       <enum bytes="20 53 01 2B" text="V200WB2 ID=2053 Protokoll:GWG_VBEM"/>
-      <enum bytes="20 94" text="V200KW1 ID=2094 Protokoll:KW"/>
       <enum bytes="20 98" text="V200KW2 ID=2098 Protokoll:KW"/>
+      <enum bytes="20 CB 03 4A 00 00 01 0A" text="VScotHO1 ID=20CB Protokoll:KW,300"/>
+      <enum bytes="20 94" text="V200KW1 ID=2094 Protokoll:KW"/>
       <enum text="UNKNOWN"/>
+    </unit>
+    <unit name="Sachnummer">
+      <abbrev>SN</abbrev>
+      <type>uint</type>
+      <icalc get="((((((((((((B0-48)*10)+(B1-48))*10)+(B2-48))*10)+(B3-48))*10)+(B4-48))*10)+(B5-48))*10)+B6-48"/>
     </unit>
     <unit name="Brenner Stunden">
       <abbrev>BH</abbrev>
@@ -224,8 +264,39 @@
       <enum bytes="01" text="drehzahlgeregelt"/>
       <enum text="UNKNOWN"/>
     </unit>
+    <unit name="Umschaltventil Stellung">
+      <abbrev>USV</abbrev>
+      <type>enum</type>
+      <enum bytes="00" text="UNDEV"/>
+      <enum bytes="01" text="Heizen"/>
+      <enum bytes="02" text="Mittelstellung"/>
+      <enum bytes="03" text="Warmwasser"/>
+      <enum text="UNKNOWN"/>
+    </unit>
   </units>
   <protocols>
+    <protocol name="P300">
+      <pid>41</pid>
+      <macros>
+        <macro name="GETADDR">
+          <command>SEND 00 01</command>
+        </macro>
+        <macro name="SETADDR">
+          <command>SEND 00 02</command>
+        </macro>
+      </macros>
+      <commands>
+        <command name="getaddr">
+          <send>GETADDR $addr $hexlen;RECV $len $unit</send>
+        </command>
+        <command name="setaddr">
+          <send>SETADDR $addr $hexlen;SEND BYTES $unit;RECV 1 SR</send>
+        </command>
+        <command name="gettestaddr">
+          <send/>
+        </command>
+      </commands>
+    </protocol>
     <protocol name="KW2">
       <macros>
         <macro name="SYNC">
@@ -240,10 +311,17 @@
       </macros>
       <commands>
         <command name="getaddr">
+          <retry>3</retry>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETADDR $addr $hexlen;RECV $len $unit</send>
         </command>
         <command name="setaddr">
           <send>SYNC;SETADDR $addr $hexlen;SEND BYTES $unit;RECV 1 SR</send>
+        </command>
+        <command name="gettestaddr">
+          <retry>3</retry>
+          <recvTimeout>1500</recvTimeout>
+          <send>SYNC;GETADDR;SEND BYTES;SEND 02;RECV 02</send>
         </command>
       </commands>
     </protocol>
@@ -275,49 +353,55 @@
         </macro>
       </macros>
       <commands>
+        <command name="enable">
+          <send/>
+        </command>
+        <command name="disable">
+          <send/>
+        </command>
         <command name="getaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETADDR $addr $hexlen 04;RECV $len $unit</send>
         </command>
         <command name="gettestaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETADDR;SEND BYTES;SEND 01 04;RECV 1</send>
         </command>
         <command name="getbaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETBADDR $addr $hexlen 04;RECV $len $unit</send>
         </command>
         <command name="getbtestaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETBADDR;SEND BYTES;SEND 01 04;RECV 1</send>
         </command>
         <command name="getpaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETPADDR $addr $hexlen 04;RECV $len $unit</send>
         </command>
         <command name="getptestaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETPADDR;SEND BYTES;SEND 01 04;RECV 1</send>
         </command>
         <command name="getvaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETVADDR $addr $hexlen 04;RECV $len $unit</send>
         </command>
         <command name="getvtestaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETVADDR;SEND BYTES;SEND 01 04;RECV 1</send>
         </command>
         <command name="geteaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETEADDR $addr $hexlen 04;RECV $len $unit</send>
         </command>
         <command name="getetestaddr">
@@ -332,24 +416,25 @@
         </command>
         <command name="getxtestaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETXADDR;SEND BYTES;SEND 01 04;RECV 1</send>
         </command>
         <command name="getkmaddr">
           <send>SYNC;GETKMDDR $addr $hexlen 04;RECV $len $unit</send>
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
         </command>
         <command name="getkmtestaddr">
           <retry>3</retry>
-          <recvTimeout>150</recvTimeout>
+          <recvTimeout>4000</recvTimeout>
           <send>SYNC;GETKMADDR;SEND BYTES;SEND 01 04;RECV 1</send>
         </command>
         <command name="init">
-          <send>SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100</send>
+          <send>SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100;SEND 16 00 00;PAUSE 100</send>
+          <retry>3</retry>
         </command>
         <command name="setaddr">
-          <send>SYNC;RECV 1</send>
+          <send>SYNC;SETADDR $addr $hexlen;SEND BYTES $unit;RECV 1 SR</send>
         </command>
       </commands>
     </protocol>
