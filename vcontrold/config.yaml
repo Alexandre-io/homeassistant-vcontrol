@@ -58,7 +58,7 @@ schema:
   tty: "str"
   refresh: "int"
   device_id: "str"
-  debud: "bool"
+  debug: "bool"
   commands: 
     - "str"
 image: "alexandreio/{arch}-homeassistant-vcontrol"
