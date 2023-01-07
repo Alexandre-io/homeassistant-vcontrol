@@ -7,10 +7,12 @@
 # Declare variables
 declare config_tty
 declare config_commands
+declare config_debug
 
 ## Get the 'message' key from the user config options.
 config_tty=$(bashio::config 'tty')
 config_deviceid=$(bashio::config 'device_id')
+config_debug=$(bashio::config 'debug')
 config_commands=$(bashio::config 'commands')
 
 # Cleanup scripts
@@ -40,5 +42,14 @@ do
 
 done
 
+# Set device ID
+sed -i "s/#DEVICEID#/$config_deviceid/g" /etc/vcontrold/vcontrold.xml
+
+if [ "$config_debug" = "true" ] ; then
+    sed -i "s/#DEBUG#/y/g" /etc/vcontrold/vcontrold.xml
+else
+    sed -i "s/#DEBUG#/n/g" /etc/vcontrold/vcontrold.xml
+fi
+
 ## Run your program
-exec /usr/sbin/vcontrold -n -U root -d $config_tty -x "/etc/vcontrold/vcontrold-$config_deviceid.xml"
+exec /usr/sbin/vcontrold -n -U root -d $config_tty

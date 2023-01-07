@@ -6,7 +6,7 @@
 
 This repository contains the following add-ons
 
-### [Vcontrol add-on](./vcontrol)
+### [Vcontrol add-on](./vcontrold)
 
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]

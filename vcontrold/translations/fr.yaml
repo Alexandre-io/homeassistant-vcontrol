@@ -8,6 +8,9 @@ configuration:
   device_id:
     name: "Device ID"
     description: "L'identifiant de l'appareil. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
+  debug:
+    name: "Debug"
+    description: "Sortie des messages de débogage"
   commands:
     name: "Commands"
     description: "Liste des commandes à envoyer. (Format: `command1:TYPE,command2:TYPE` avec `TYPE` qui doit être `FLOAT` ou `STRING`)"
