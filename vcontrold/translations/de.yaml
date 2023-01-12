@@ -1,0 +1,16 @@
+configuration:
+  tty:
+    name: "TTY"
+    description: "Name des seriellen Ports / TTY, um mit dem Gerät zu kommunizieren."
+  refresh:
+    name: "Refresh rate"
+    description: "Aktualisierungrate / Wartezeit zwischen zwei Aufrufen des vclients."
+  device_id:
+    name: "Device ID"
+    description: "Viessmann Gerätekennung (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
+  debug:
+    name: "Debug"
+    description: "Ausgabe von Debug-Nachrichten"
+  commands:
+    name: "Commands"
+    description: "Befehlsliste, die an das Gerät gesendet werden soll. (Format: `command1:TYPE,command2:TYPE` where `TYPE` must be `FLOAT` or `STRING`)"
