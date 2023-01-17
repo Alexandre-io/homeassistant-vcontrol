@@ -18,6 +18,10 @@ else
     export MQTT_PASSWORD=$(bashio::services mqtt "password")
     export MQTT_TOPIC="openv"
 
+    bashio::log.info "Setting vcontrold host and port ..."
+    export VCONTROL_HOST=$(bashio::config 'vcontrol_host')
+    export VCONTROL_PORT=$(bashio::config 'vcontrol_port')
+
     ## Run your program
     while true ; do
         mosquitto_sub -v -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t "$MQTT_TOPIC/#" | while read -r payload
@@ -28,7 +32,7 @@ else
             if [[ $topic =~ "/set" ]]; then
                 command=$(echo $topic | cut -d'/' -f2)
                 bashio::log.info "Sending command: [${command}]: ${value}"
-                vclient -h 127.0.0.1 -p 3002 -o /dev/stdout -c "${command} ${value}"
+                vclient -h $VCONTROL_HOST -p $VCONTROL_PORT -o /dev/stdout -c "${command} ${value}"
             fi
         done
         sleep $refresh_rate 
