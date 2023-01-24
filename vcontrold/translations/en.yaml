@@ -8,6 +8,12 @@ configuration:
   device_id:
     name: "Device ID"
     description: "The device identifier. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
+  vcontrol_host:
+    name: "Vcontrold Host"
+    description: "vcontrold host to connect to (default: localhost)"
+  vcontrol_port:
+    name: "Vcontrold Port"
+    description: "vcontrold port to connect to (default: 3002)"
   debug:
     name: "Debug"
     description: "Output of debug messages"

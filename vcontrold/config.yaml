@@ -15,6 +15,8 @@ options:
   tty: "/dev/ttyUSB0"
   refresh: 30
   device_id: "2098"
+  vcontrol_host: localhost
+  vcontrol_port: 3002
   debug: false
   commands:
     - getTempA:FLOAT
@@ -58,8 +60,10 @@ schema:
   tty: "str"
   refresh: "int"
   device_id: "str"
-  debug: "bool"
-  commands: 
+  vcontrol_host: "str?"
+  vcontrol_port: "int?"
+  debug: "bool?"
+  commands:
     - "str"
 image: "alexandreio/{arch}-homeassistant-vcontrol"
 usb: true
