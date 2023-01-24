@@ -12,7 +12,12 @@ Example: Writing a value to the topic `openv/setTempWWSoll` will set the target 
 ## Configuration
 
 ### Add-On Configuration
-In the configuration section, you need to set the USB/TTY device that uses an **Optolink** interface to connect to the **Vitodens** device. Select a _refresh rate_ that defines the interval used for polling your device and the _device id_ (typically also seen in the device identifier string) which is used to select the correct mapping for the commands that are executed.
+In the configuration section, you have 2 choices to connect to your **Vitodens** device using an an **Optolink** interface:
+1. For a locally connected **Optolink** cable, set the USB/TTY device. The add-on will pass through that USB port run **vcontrold** locally inside docker.
+2. For a remotely running **vcontrold** (e.g. RPi connected to your **Vitodens** device), select its hostname and port (_Vcontrold host/port_). These settings are by default set to localhost:3002.
+
+Select a _refresh rate_ that defines the interval used for polling your device and the _device id_ (typically also seen in the device identifier string) which is used to select the correct mapping for the commands that are executed.
+ 
 
 The commands section can be edited and extended in YAML mode, e.g.
 ```yaml
