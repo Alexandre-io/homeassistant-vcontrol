@@ -9,14 +9,14 @@ declare config_tty
 declare config_deviceid
 declare config_commands
 declare config_debug
-declare remote_vcontrol
+declare vcontrol_host
 
 ## Get the 'message' key from the user config options.
 config_tty=$(bashio::config 'tty')
 config_deviceid=$(bashio::config 'device_id')
 config_debug=$(bashio::config 'debug')
 config_commands=$(bashio::config 'commands')
-remote_vcontrol=$(bashio::config 'remote_vcontrol')
+vcontrol_host=$(bashio::config 'vcontrol_host')
 
 # Cleanup scripts
 rm /etc/vcontrold/1_mqtt_commands.txt || /bin/true
@@ -54,10 +54,11 @@ else
     sed -i "s/#DEBUG#/n/g" /etc/vcontrold/vcontrold.xml
 fi
 
-bashio::log.info "Remote vcontrol set to $remote_vcontrol..."
-
 ## Run your program
-if [ "$remote_vcontrol" = "false" ] ; then
+if [ "$vcontrol_host" = "localhost" ] ; then
     bashio::log.info "Starting local vcontrold..."
     exec /usr/sbin/vcontrold -n -U root -d $config_tty
+else
+    # do nothing - needed as a dummy job to keep the dependency job running
+    tail -f /dev/null
 fi

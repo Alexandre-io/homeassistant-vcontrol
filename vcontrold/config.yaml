@@ -15,7 +15,6 @@ options:
   tty: "/dev/ttyUSB0"
   refresh: 30
   device_id: "2098"
-  remote_vcontrol: false
   vcontrol_host: localhost
   vcontrol_port: 3002
   debug: false
@@ -61,11 +60,10 @@ schema:
   tty: "str"
   refresh: "int"
   device_id: "str"
-  remote_vcontrol: "bool"
-  vcontrol_host: "str"
-  vcontrol_port: "int"
-  debug: "bool"
-  commands: 
+  vcontrol_host: "str?"
+  vcontrol_port: "int?"
+  debug: "bool?"
+  commands:
     - "str"
 image: "alexandreio/{arch}-homeassistant-vcontrol"
 usb: true

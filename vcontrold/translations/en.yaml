@@ -8,9 +8,6 @@ configuration:
   device_id:
     name: "Device ID"
     description: "The device identifier. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
-  remote_vcontrol:
-    name: "Connect to remote vcontrold"
-    description: "Set to true if you want to connect to a remote vcontrold and false to run vcontrold on localhost (e.g. Optolink cable connected)"
   vcontrol_host:
     name: "Vcontrold Host"
     description: "vcontrold host to connect to (default: localhost)"

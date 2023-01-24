@@ -8,10 +8,7 @@ configuration:
   device_id:
     name: "Device ID"
     description: "Viessmann Gerätekennung (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
-  remote_vcontrol:
-    name: "Connect to remote vcontrold"
-    description: "An, falls mit vcontrold auf anderem Rechner verbunden werden soll und aus, um vcontrold auf localhost zu starten (z.B. bei verbundenem Optolink-Kabel)"
-  vcontrol_host:
+vcontrol_host:
     name: "Vcontrold Host"
     description: "vcontrold host für die Verbindung (default: localhost)"
   vcontrol_port:
