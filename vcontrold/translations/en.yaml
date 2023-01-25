@@ -14,6 +14,21 @@ configuration:
   vcontrol_port:
     name: "Vcontrold Port"
     description: "vcontrold port to connect to (default: 3002)"
+  mqtt_host:
+    name: "MQTT Hostname"
+    description: "Hostname of a remote MQTT broker. If empty, the default internal MQTT broker will be used."
+  mqtt_port:
+    name: "MQTT Port"
+    description: "Port of a remote MQTT broker. If empty, the default internal MQTT broker will be used."
+  mqtt_user:
+    name: "MQTT User"
+    description: "User of a remote MQTT broker. If empty, the default internal MQTT broker will be used."
+  mqtt_password:
+    name: "MQTT Password"
+    description: "Password of a remote MQTT broker. If empty, the default internal MQTT broker will be used."
+  mqtt_topic:
+    name: "MQTT Topic"
+    description: "Topic where viessmann data are managed. Default is openv."
   debug:
     name: "Debug"
     description: "Output of debug messages"

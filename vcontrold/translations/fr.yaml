@@ -14,6 +14,21 @@ configuration:
   vcontrol_port:
     name: "Vcontrold Port"
     description: "Port vcontrold auquel se connecter (défaut: 3002)"
+  mqtt_host:
+    name: ""
+    description: ""
+  mqtt_port:
+    name: ""
+    description: ""
+  mqtt_user:
+    name: ""
+    description: ""
+  mqtt_password:
+    name: ""
+    description: ""
+  mqtt_topic:
+    name: ""
+    description: ""
   debug:
     name: "Debug"
     description: "Sortie des messages de débogage"
