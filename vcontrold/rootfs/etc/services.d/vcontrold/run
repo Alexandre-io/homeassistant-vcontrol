@@ -8,15 +8,11 @@
 declare config_tty
 declare config_deviceid
 declare config_commands
-declare config_debug
-declare vcontrol_host
 
 ## Get the 'message' key from the user config options.
 config_tty=$(bashio::config 'tty')
 config_deviceid=$(bashio::config 'device_id')
-config_debug=$(bashio::config 'debug')
 config_commands=$(bashio::config 'commands')
-vcontrol_host=$(bashio::config 'vcontrol_host')
 
 # Cleanup scripts
 rm /etc/vcontrold/1_mqtt_commands.txt || /bin/true
@@ -33,7 +29,7 @@ do
     cmd=$(echo $command | cut -d':' -f1)
     type=$(echo $command | cut -d':' -f2)
 
-    echo "Setup command ${i}: ${cmd} with type ${type}"
+    bashio::log.info "Setup command ${i}: ${cmd} with type ${type}"
     echo $cmd >> /etc/vcontrold/1_mqtt_commands.txt
 
     R='$'$i''
@@ -48,14 +44,14 @@ done
 # Set device ID
 sed -i "s/#DEVICEID#/$config_deviceid/g" /etc/vcontrold/vcontrold.xml
 
-if [ "$config_debug" = "true" ] ; then
+if bashio::config.true 'debug'; then
     sed -i "s/#DEBUG#/y/g" /etc/vcontrold/vcontrold.xml
 else
     sed -i "s/#DEBUG#/n/g" /etc/vcontrold/vcontrold.xml
 fi
 
 ## Run your program
-if [ "$vcontrol_host" = "localhost" ] ; then
+if bashio::config.equals 'vcontrol_host' 'localhost'; then
     bashio::log.info "Starting local vcontrold..."
     exec /usr/sbin/vcontrold -n -U root -d $config_tty
 else

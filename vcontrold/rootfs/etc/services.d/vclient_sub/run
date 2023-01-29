@@ -4,16 +4,11 @@
 # s6-overlay docs: https://github.com/just-containers/s6-overlay
 # ==============================================================================
 
-declare refresh_rate
-refresh_rate=$(bashio::config 'refresh')
+## Fetch MQTT settings
+. /etc/services.d/get_mqtt_settings.sh
 
-## Fetch MQTT credentials
-. /etc/services.d/get_mqtt_credentials.sh
-
-
-bashio::log.info "Setting vcontrold host and port ..."
-export VCONTROL_HOST=$(bashio::config 'vcontrol_host')
-export VCONTROL_PORT=$(bashio::config 'vcontrol_port')
+## Fetch Vcontrold settings
+. /etc/services.d/get_vcontrold_settings.sh
 
 ## Run your program
 while true ; do
@@ -28,5 +23,6 @@ while true ; do
             vclient -h $VCONTROL_HOST -p $VCONTROL_PORT -o /dev/stdout -c "${command} ${value}"
         fi
     done
-    sleep $refresh_rate
+    sleep $REFRESH_RATE
 done
+
