@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.8.1
+
+- Added vclient error handling
+
 ## 1.8.0
 
 - Set vcontrol host&port as optional configuration

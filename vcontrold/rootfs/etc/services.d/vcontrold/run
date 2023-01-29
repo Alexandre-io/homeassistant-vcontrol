@@ -40,8 +40,9 @@ do
         R='"$R'$i'"'
     fi
 
-    echo 'mosquitto_pub -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t $MQTT_TOPIC/$C'$i' -m '$R'' >> /etc/vcontrold/2_mqtt.tmpl
-
+    echo 'if [ "x$E'$i'" = x ]; then' >> /etc/vcontrold/2_mqtt.tmpl
+    echo '  mosquitto_pub -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t $MQTT_TOPIC/$C'$i' -m '$R'' >> /etc/vcontrold/2_mqtt.tmpl
+    echo 'fi' >> /etc/vcontrold/2_mqtt.tmpl
 done
 
 # Set device ID
