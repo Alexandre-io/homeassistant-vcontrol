@@ -8,33 +8,25 @@ declare refresh_rate
 refresh_rate=$(bashio::config 'refresh')
 
 ## Fetch MQTT credentials
-if ! bashio::services.available "mqtt"; then
-    bashio::log.error "No internal MQTT service found"
-else
-    bashio::log.info "MQTT service found, fetching credentials ..."
-    export MQTT_HOST=$(bashio::services mqtt "host")
-    export MQTT_PORT=$(bashio::services mqtt "port")
-    export MQTT_USER=$(bashio::services mqtt "username")
-    export MQTT_PASSWORD=$(bashio::services mqtt "password")
-    export MQTT_TOPIC="openv"
+. /etc/services.d/get_mqtt_credentials.sh
 
-    bashio::log.info "Setting vcontrold host and port ..."
-    export VCONTROL_HOST=$(bashio::config 'vcontrol_host')
-    export VCONTROL_PORT=$(bashio::config 'vcontrol_port')
 
-    ## Run your program
-    while true ; do
-        mosquitto_sub -v -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t "$MQTT_TOPIC/#" | while read -r payload
-        do
-            # Here is the callback to execute whenever you receive a message:
-            topic=$(echo $payload | cut -d' ' -f1)
-            value=$(echo $payload | cut -d' ' -f2)
-            if [[ $topic =~ "/set" ]]; then
-                command=$(echo $topic | cut -d'/' -f2)
-                bashio::log.info "Sending command: [${command}]: ${value}"
-                vclient -h $VCONTROL_HOST -p $VCONTROL_PORT -o /dev/stdout -c "${command} ${value}"
-            fi
-        done
-        sleep $refresh_rate 
+bashio::log.info "Setting vcontrold host and port ..."
+export VCONTROL_HOST=$(bashio::config 'vcontrol_host')
+export VCONTROL_PORT=$(bashio::config 'vcontrol_port')
+
+## Run your program
+while true ; do
+    mosquitto_sub -v -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t "$MQTT_TOPIC/#" | while read -r payload
+    do
+        # Here is the callback to execute whenever you receive a message:
+        topic=$(echo $payload | cut -d' ' -f1)
+        value=$(echo $payload | cut -d' ' -f2)
+        if [[ $topic =~ "/set" ]]; then
+            command=$(echo $topic | cut -d'/' -f2)
+            bashio::log.info "Sending command: [${command}]: ${value}"
+            vclient -h $VCONTROL_HOST -p $VCONTROL_PORT -o /dev/stdout -c "${command} ${value}"
+        fi
     done
-fi
+    sleep $refresh_rate
+done

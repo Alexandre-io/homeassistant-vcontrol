@@ -8,12 +8,27 @@ configuration:
   device_id:
     name: "Device ID"
     description: "Viessmann Gerätekennung (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
-vcontrol_host:
+  vcontrol_host:
     name: "Vcontrold Host"
     description: "vcontrold host für die Verbindung (default: localhost)"
   vcontrol_port:
     name: "Vcontrold Port"
     description: "vcontrold für die Verbindung (default: 3002)"
+  mqtt_host:
+    name: "MQTT Hostname"
+    description: "Hostname eines remote MQTT brokers. Falls leer wird der interne MQTT Broker verwendet"
+  mqtt_port:
+    name: "MQTT Port"
+    description: "Port eines remote MQTT brokers. Falls leer wird der interne MQTT Broker verwendet"
+  mqtt_user:
+    name: "MQTT User"
+    description: "User eines remote MQTT brokers. Falls leer wird der default username des internen MQTT Broker verwendet"
+  mqtt_password:
+    name: "MQTT Password"
+    description: "Password eines remote MQTT brokers. Falls leer wird der interne MQTT Broker verwendet"
+  mqtt_topic:
+    name: "MQTT Topic"
+    description: "Topic unter dem die Viessmann Daten verwalten werden. Default openv"
   debug:
     name: "Debug"
     description: "Ausgabe von Debug-Nachrichten"
