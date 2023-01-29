@@ -51,7 +51,7 @@ else
 fi
 
 ## Run your program
-if bashio::config.equals 'vcontrol_host' 'localhost'; then
+if [ "$VCONTROL_HOST" = "localhost" ] ; then
     bashio::log.info "Starting local vcontrold..."
     exec /usr/sbin/vcontrold -n -U root -d $config_tty
 else
