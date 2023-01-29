@@ -28,7 +28,7 @@ configuration:
     description: "Password eines remote MQTT brokers. Falls leer wird der interne MQTT Broker verwendet"
   mqtt_topic:
     name: "MQTT Topic"
-    description: "Topic unter dem die Viessmann Daten verwalten werden. Default openv"
+    description: "Topic unter dem die Viessmann Daten verwalten werden. Default `openv`"
   debug:
     name: "Debug"
     description: "Ausgabe von Debug-Nachrichten"

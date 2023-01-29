@@ -1003,7 +1003,7 @@
       <description>Betriebsart M2</description>
       <device ID="2053"/>
     </command>   
-    	<!--  Betriebsart set  -->
+    <!--  Betriebsart set  -->
     <command name="setBetriebArtM1" protocmd="setaddr">
       <addr>2301</addr>
       <len>1</len>

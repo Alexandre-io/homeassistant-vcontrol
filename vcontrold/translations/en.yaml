@@ -9,8 +9,8 @@ configuration:
     name: "Device ID"
     description: "The device identifier. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
   vcontrol_host:
-    name: "Vcontrold Host"
-    description: "vcontrold host to connect to (default: localhost)"
+    name: "Vcontrold Hostname"
+    description: "vcontrold hostname to connect to (default: localhost)"
   vcontrol_port:
     name: "Vcontrold Port"
     description: "vcontrold port to connect to (default: 3002)"
@@ -28,7 +28,7 @@ configuration:
     description: "Password of a remote MQTT broker. If empty, the default internal MQTT broker will be used."
   mqtt_topic:
     name: "MQTT Topic"
-    description: "Topic where viessmann data are managed. Default is openv."
+    description: "Topic where viessmann data are managed. Default is `openv`."
   debug:
     name: "Debug"
     description: "Output of debug messages"

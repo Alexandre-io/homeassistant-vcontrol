@@ -1,5 +1,10 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.7.0
+
+- Added feature to make mqtt broker configurable (@ppuetsch)
+- Added command setBetriebArtM1 for V200KW1 (@Razzer90)
+
 ## 1.6.0
 
 - Added feature to switch to remote vcontrold (@Schm1tz1)

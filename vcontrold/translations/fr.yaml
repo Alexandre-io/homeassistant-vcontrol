@@ -9,26 +9,26 @@ configuration:
     name: "Device ID"
     description: "L'identifiant de l'appareil. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
   vcontrol_host:
-    name: "Vcontrold Host"
+    name: "Vcontrold Hostname"
     description: "Hôte vcontrold auquel se connecter (défaut: localhost)"
   vcontrol_port:
     name: "Vcontrold Port"
     description: "Port vcontrold auquel se connecter (défaut: 3002)"
   mqtt_host:
-    name: ""
-    description: ""
+    name: "MQTT Hostname"
+    description: "Hôte du serveur MQTT distant. Si vide, le serveur MQTT interne par défaut sera utilisé."
   mqtt_port:
-    name: ""
-    description: ""
+    name: "MQTT Port"
+    description: "Port du serveur MQTT distant. Si vide, le serveur MQTT interne par défaut sera utilisé."
   mqtt_user:
-    name: ""
-    description: ""
+    name: "MQTT User"
+    description: "Utilisateur du serveur MQTT distant. Si vide, le serveur MQTT interne par défaut sera utilisé."
   mqtt_password:
-    name: ""
-    description: ""
+    name: "MQTT Password"
+    description: "Mot de passe du serveur MQTT distant. Si vide, le serveur MQTT interne par défaut sera utilisé."
   mqtt_topic:
-    name: ""
-    description: ""
+    name: "MQTT Topic"
+    description: "Topic MQTT où les données viessmann sont envoyées. La valeur par défaut est `openv`."
   debug:
     name: "Debug"
     description: "Sortie des messages de débogage"
