@@ -17,10 +17,6 @@ options:
   device_id: "2098"
   vcontrol_host: localhost
   vcontrol_port: 3002
-  mqtt_host:
-  mqtt_port:
-  mqtt_user:
-  mqtt_password:
   mqtt_topic: "openv"
   debug: false
   commands:
