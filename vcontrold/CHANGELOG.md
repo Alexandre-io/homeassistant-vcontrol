@@ -1,5 +1,10 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.8.2
+
+- Fix error code check (@ppuetsch)
+- Make scripts executable (@ppuetsch)
+
 ## 1.8.1
 
 - Added vclient error handling
