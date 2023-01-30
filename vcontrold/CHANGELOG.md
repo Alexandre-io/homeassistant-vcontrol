@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.8.3
+
+- Deactivated exposed port by default for security reasons (Schm1tz1)
+
 ## 1.8.2
 
 - Fix error code check (@ppuetsch)
