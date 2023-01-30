@@ -73,7 +73,7 @@ image: "alexandreio/{arch}-homeassistant-vcontrol"
 usb: true
 apparmor: false
 ports:
-  3002/tcp: 3002
+  3002/tcp: null
 ports_description:
   3002/tcp: "Vcontrol deamon"
 services:
