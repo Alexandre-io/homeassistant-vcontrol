@@ -1,0 +1,37 @@
+configuration:
+  tty:
+    name: "Port (TTY)"
+    description: "Ścieżka urządzenia (portu TTY), który będzie się komunikował z hardware."
+  refresh:
+    name: "Odświeżanie"
+    description: "Czas oczekiwania pomiędzy uruchomieniami."
+  device_id:
+    name: "ID urządzenia"
+    description: "Identyfikator urządzenia. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
+  vcontrol_host:
+    name: "Host vcontrold"
+    description: "Nazwa hosta vcontrold do połączenia (domyślnie: localhost)"
+  vcontrol_port:
+    name: "Port Vcontrold"
+    description: "Port hosta vcontrold do połączenia (domyślnie: 3002)"
+  mqtt_host:
+    name: "Host MQTT"
+    description: "Nazwa zdalnego brokera MQTT. Jeśli puste, używany będzie domyślny wewnętrzny broker MQTT."
+  mqtt_port:
+    name: "Port MQTT"
+    description: "Port zdalnego brokera MQTT. Jeśli puste, używany będzie domyślny wewnętrzny broker MQTT."
+  mqtt_user:
+    name: "Użytkownik MQTT"
+    description: "Login użytkownika zdalnego hosta MQTT. Jeśli puste, używany będzie domyślny wewnętrzny broker MQTT."
+  mqtt_password:
+    name: "Hasło MQTT"
+    description: "Hasło użytkownika zdalnego hosta MQTT. Jeśli puste, używany będzie domyślny wewnętrzny broker MQTT."
+  mqtt_topic:
+    name: "Topic MQTT"
+    description: "Topic, na który będa wysyłane dane. Domyślny to `openv`."
+  debug:
+    name: "Debugowanie"
+    description: "Wyjście dla debugowania"
+  commands:
+    name: "Komendy"
+    description: "Lista komend do wysłania. (Format: `command1:TYPE,command2:TYPE` gdzie `TYPE` musi być `FLOAT` lub `STRING`)"
