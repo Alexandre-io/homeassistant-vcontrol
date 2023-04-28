@@ -20,7 +20,7 @@ fs.readFile(filePath, function (err, data) {
           console.error(err);
         });
     }
-    console.log("Wrinting file...");
+    console.log("Writing file...");
 
     let xml_string = builder.buildObject(result);
     fs.writeFile(filePath, xml_string, function (err, data) {
