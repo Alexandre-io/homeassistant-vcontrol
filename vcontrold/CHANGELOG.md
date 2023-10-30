@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.10.0
+
+- Fix build
+
 ## 1.9.0
 
 - Allow custom vito.xml
