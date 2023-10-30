@@ -6,6 +6,7 @@
 
 # Declare variables
 declare config_tty
+declare config_file
 declare config_deviceid
 declare config_commands
 
@@ -14,8 +15,15 @@ declare config_commands
 
 ## Get the 'message' key from the user config options.
 config_tty=$(bashio::config 'tty')
+config_file=vito.xml
 config_deviceid=$(bashio::config 'device_id')
 config_commands=$(bashio::config 'commands')
+
+## Check if custom vito.xml file exist
+if [ -f "/config/vcontrold/vito.xml" ]; then
+    bashio::log.info "Using a custom vito.xml file"
+    config_file=/config/vcontrold/vito.xml
+fi
 
 # Cleanup scripts
 rm /etc/vcontrold/1_mqtt_commands.txt || /bin/true
@@ -47,6 +55,9 @@ done
 
 # Set device ID
 sed -i "s/#DEVICEID#/$config_deviceid/g" /etc/vcontrold/vcontrold.xml
+
+# Set vito.xml
+sed -i "s|#VITOXML#|$config_file|g" /etc/vcontrold/vcontrold.xml
 
 if bashio::config.true 'debug'; then
     sed -i "s/#DEBUG#/y/g" /etc/vcontrold/vcontrold.xml

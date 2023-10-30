@@ -1,5 +1,10 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.9.0
+
+- Allow custom vito.xml
+- Upgrade debian to bookworm
+
 ## 1.8.4
 
 - Added polish translation (@Qbunjo)
