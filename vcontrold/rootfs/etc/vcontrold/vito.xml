@@ -34,6 +34,15 @@
       <description>Ermittle die Aussentemperatur in Grad C (Gedaempft)</description>
       <device ID="2053"/>
     </command>
+    <command name="getTempRaumIstA1M1" protocmd="getaddr">
+      <addr>0896</addr>
+      <len>2</len>
+      <unit>UT</unit>
+      <description>Ermittle die tatsaechliche Raumtemperatur in Grad C (nur mit Fernbedienung Vitotrol 200/300)</description>
+      <device ID="2094" />
+      <device ID="2098" />
+      <device ID="20CB" />
+    </command>
     <!-- WARMWASSER -->
     <command name="getTempWWist" protocmd="getaddr">
       <addr>0804</addr>
