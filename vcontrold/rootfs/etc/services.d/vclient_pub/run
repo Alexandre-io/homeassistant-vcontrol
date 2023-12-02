@@ -11,7 +11,8 @@
 . /etc/services.d/get_vcontrold_settings.sh
 
 ## Run your program
+bashio::log.info "Starting vclient_pub main loop"
 while sleep $REFRESH_RATE; do
-    vclient -h $VCONTROL_HOST -p $VCONTROL_PORT -f /etc/vcontrold/1_mqtt_commands.txt -t /etc/vcontrold/2_mqtt.tmpl -x /etc/vcontrold/3_mqtt_pub.sh
-    bashio::log.info "Looping vclient. Sleeping $REFRESH_RATE seconds."
+    vclient -h $VCONTROL_HOST -p $VCONTROL_PORT -f /etc/vcontrold/1_mqtt_commands.txt -t /etc/vcontrold/2_mqtt.tmpl -x /etc/vcontrold/3_mqtt_pub.sh && exitcode=0 || exitcode=$?
+    bashio::log.info "vclient_pub run finished with exit code $exitcode. Looping vclient. Sleeping $REFRESH_RATE seconds."
 done
