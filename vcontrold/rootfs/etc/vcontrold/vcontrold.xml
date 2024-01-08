@@ -441,5 +441,6 @@
   </protocols>
   <extern xmlns:xi="http://www.w3.org/2003/XInclude">
     <xi:include href="#VITOXML#" parse="xml"/>
+    <xi:include href="#VCONTROLDXML#" parse="xml"/>
   </extern>
 </V-Control>

@@ -7,6 +7,7 @@
 # Declare variables
 declare config_tty
 declare config_file
+declare config_file2
 declare config_deviceid
 declare config_commands
 
@@ -16,6 +17,7 @@ declare config_commands
 ## Get the 'message' key from the user config options.
 config_tty=$(bashio::config 'tty')
 config_file=vito.xml
+config_file2=vcontrold.xml
 config_deviceid=$(bashio::config 'device_id')
 config_commands=$(bashio::config 'commands')
 
@@ -23,6 +25,12 @@ config_commands=$(bashio::config 'commands')
 if [ -f "/config/vcontrold/vito.xml" ]; then
     bashio::log.info "Using a custom vito.xml file"
     config_file=/config/vcontrold/vito.xml
+fi
+
+## Check if custom vcontrold.xml file exist
+if [ -f "/config/vcontrold/vcontrold.xml" ]; then
+    bashio::log.info "Using a custom vcontrold.xml file"
+    config_file2=/config/vcontrold/vcontrold.xml
 fi
 
 # Cleanup scripts
@@ -58,6 +66,9 @@ sed -i "s/#DEVICEID#/$config_deviceid/g" /etc/vcontrold/vcontrold.xml
 
 # Set vito.xml
 sed -i "s|#VITOXML#|$config_file|g" /etc/vcontrold/vcontrold.xml
+
+# Set vcontrold.xml
+sed -i "s|#VCONTROLDXML#|$config_file2|g" /etc/vcontrold/vcontrold.xml
 
 if bashio::config.true 'debug'; then
     sed -i "s/#DEBUG#/y/g" /etc/vcontrold/vcontrold.xml
