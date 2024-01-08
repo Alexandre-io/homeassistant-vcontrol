@@ -110,12 +110,13 @@ mqtt:
       state_on: 1
       state_off: 0
 ```
-### Custom vito.xml configuration file
+### Custom vito.xml / vcontrold.xml configuration file
 
-The module use the `config` option (refer to https://developers.home-assistant.io/docs/add-ons/configuration/#add-on-advanced-options) for mounting a custom configuration file. It verifies the existence of a 'vito.xml' file during startup.
+The module use the `config` option (refer to https://developers.home-assistant.io/docs/add-ons/configuration/#add-on-advanced-options) for mounting a custom configuration file. It verifies the existence of a 'vito.xml' and 'vcontrold.xml' file during startup.
 
 Ensure the file is placed in the specified path:
 ```
 config/vcontrold/vito.xml
+config/vcontrold/vcontrold.xml
 ```
 
