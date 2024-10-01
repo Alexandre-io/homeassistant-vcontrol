@@ -21,14 +21,18 @@ config_commands=$(bashio::config 'commands')
 
 # Check if custom vito.xml file exists
 if [ -f "/config/vcontrold/vito.xml" ]; then
-    bashio::log.info "Using custom vito.xml file"
+    bashio::log.info "Using custom vito.xml file."
     config_file="/config/vcontrold/vito.xml"
+else
+    bashio::log.info "Using default vito.xml file."
 fi
 
 # Check if custom vcontrold.xml file exists
 if [ -f "/config/vcontrold/vcontrold.xml" ]; then
-    bashio::log.info "Using custom vcontrold.xml file"
+    bashio::log.info "Using custom vcontrold.xml file."
     config_file2="/config/vcontrold/vcontrold.xml"
+else
+    bashio::log.info "Using default vcontrold.xml file."
 fi
 
 # Cleanup old scripts
@@ -41,7 +45,7 @@ for i in "${!commands_array[@]}"; do
     cmd=$(echo "${commands_array[$i]}" | cut -d':' -f1)
     type=$(echo "${commands_array[$i]}" | cut -d':' -f2)
 
-    bashio::log.info "Configuring command $((i+1)): ${cmd} with type ${type}"
+    bashio::log.info "Configuring command $((i+1)): ${cmd} with type ${type}."
     echo "$cmd" >> /etc/vcontrold/1_mqtt_commands.txt
 
     R='$'"$((i+1))"
@@ -57,7 +61,6 @@ done
 # Configure vcontrold.xml with the user-specified values
 sed -i "s/#DEVICEID#/$config_deviceid/g" /etc/vcontrold/vcontrold.xml
 sed -i "s|#VITOXML#|$config_file|g" /etc/vcontrold/vcontrold.xml
-sed -i "s|#VCONTROLDXML#|$config_file2|g" /etc/vcontrold/vcontrold.xml
 
 # Enable or disable debug mode based on user configuration
 if bashio::config.true 'debug'; then
@@ -69,7 +72,7 @@ fi
 # Start the vcontrold service or a dummy process for external control
 if [ "$VCONTROL_HOST" = "localhost" ]; then
     bashio::log.info "Starting local vcontrold..."
-    exec /usr/sbin/vcontrold -n -U root -d "$config_tty"
+    exec /usr/sbin/vcontrold -x "$config_file2" -n -U root -d "$config_tty"
 else
     bashio::log.info "vcontrold is not running locally. Keeping process alive."
     tail -f /dev/null

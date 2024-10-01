@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Vcontrol add-on
-version: "1.12.1"
+version: "1.12.2"
 slug: vcontrold
 description: Vcontrol add-on
 url: "https://github.com/Alexandre-io/homeassistant-vcontrol"
@@ -83,5 +83,6 @@ devices:
   - /dev/ttyUSB1
   - /dev/ttyUSB2
   - /dev/ttyUSB3
-map:
-  - config
+map: 
+  - type: config
+    read_only: False

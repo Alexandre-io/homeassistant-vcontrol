@@ -1,6 +1,6 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
-## 1.12.0, 1.12.1
+## 1.12.0, 1.12.1, 1.12.2
 
 - Code Optimization
 
