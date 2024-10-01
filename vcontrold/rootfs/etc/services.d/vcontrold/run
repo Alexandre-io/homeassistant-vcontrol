@@ -5,11 +5,12 @@
 # ==============================================================================
 
 # Declare variables
-declare config_tty
-declare config_file="vito.xml"
-declare config_file2="vcontrold.xml"
 declare config_deviceid
 declare config_commands
+declare config_tty
+declare config_file_vito="vito.xml"
+declare config_file_vcontrold="/config/vcontrold/vcontrold.xml"
+declare use_custom_config_file_vcontrold=false
 
 # Fetch Vcontrold settings
 source /etc/services.d/get_vcontrold_settings.sh
@@ -22,7 +23,7 @@ config_commands=$(bashio::config 'commands')
 # Check if custom vito.xml file exists
 if [ -f "/config/vcontrold/vito.xml" ]; then
     bashio::log.info "Using custom vito.xml file."
-    config_file="/config/vcontrold/vito.xml"
+    config_file_vito="/config/vcontrold/vito.xml"
 else
     bashio::log.info "Using default vito.xml file."
 fi
@@ -30,7 +31,7 @@ fi
 # Check if custom vcontrold.xml file exists
 if [ -f "/config/vcontrold/vcontrold.xml" ]; then
     bashio::log.info "Using custom vcontrold.xml file."
-    config_file2="/config/vcontrold/vcontrold.xml"
+    use_custom_config_file_vcontrold=true
 else
     bashio::log.info "Using default vcontrold.xml file."
 fi
@@ -60,7 +61,7 @@ done
 
 # Configure vcontrold.xml with the user-specified values
 sed -i "s/#DEVICEID#/$config_deviceid/g" /etc/vcontrold/vcontrold.xml
-sed -i "s|#VITOXML#|$config_file|g" /etc/vcontrold/vcontrold.xml
+sed -i "s|#VITOXML#|$config_file_vito|g" /etc/vcontrold/vcontrold.xml
 
 # Enable or disable debug mode based on user configuration
 if bashio::config.true 'debug'; then
@@ -72,7 +73,15 @@ fi
 # Start the vcontrold service or a dummy process for external control
 if [ "$VCONTROL_HOST" = "localhost" ]; then
     bashio::log.info "Starting local vcontrold..."
-    exec /usr/sbin/vcontrold -x "$config_file2" -n -U root -d "$config_tty"
+
+    # Check if a custom config file2 is used and include -x option only if needed
+    if [ "$use_custom_config_file_vcontrold" = true ]; then
+        bashio::log.info "Using custom vcontrold.xml with -x option."
+        exec /usr/sbin/vcontrold -x "$config_file_vcontrold" -n -U root -d "$config_tty"
+    else
+        bashio::log.info "Using default vcontrold.xml without -x option."
+        exec /usr/sbin/vcontrold -n -U root -d "$config_tty"
+    fi
 else
     bashio::log.info "vcontrold is not running locally. Keeping process alive."
     tail -f /dev/null
