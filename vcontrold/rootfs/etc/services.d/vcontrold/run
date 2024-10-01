@@ -41,22 +41,26 @@ rm -f /etc/vcontrold/1_mqtt_commands.txt /etc/vcontrold/2_mqtt.tmpl || true
 echo '#!/bin/sh' > /etc/vcontrold/2_mqtt.tmpl
 
 # Configure scripts based on commands
-IFS='|' read -r -a commands_array <<< "$config_commands"
-for i in "${!commands_array[@]}"; do
-    cmd=$(echo "${commands_array[$i]}" | cut -d':' -f1)
-    type=$(echo "${commands_array[$i]}" | cut -d':' -f2)
+commands_array=(`echo $config_commands | tr '|' ' '`)
+i=0
+for command in "${commands_array[@]}"
+do
+   :
+    ((i=i+1))
+    cmd=$(echo $command | cut -d':' -f1)
+    type=$(echo $command | cut -d':' -f2)
 
-    bashio::log.info "Configuring command $((i+1)): ${cmd} with type ${type}."
-    echo "$cmd" >> /etc/vcontrold/1_mqtt_commands.txt
+    bashio::log.info "Configuring command ${i}: ${cmd} with type ${type}"
+    echo $cmd >> /etc/vcontrold/1_mqtt_commands.txt
 
-    R='$'"$((i+1))"
-    [ "$type" == "STRING" ] && R='"$R'"$((i+1))"'"'
+    R='$'$i''
+    if [[ $type == "STRING" ]]; then
+        R='"$R'$i'"'
+    fi
 
-    cat <<EOF >> /etc/vcontrold/2_mqtt.tmpl
-if [ "x\$E$((i+1))" = "xOK" ]; then
-  mosquitto_pub -h \$MQTT_HOST -p \$MQTT_PORT -u \$MQTT_USER -P \$MQTT_PASSWORD -t \$MQTT_TOPIC/\$C$((i+1)) -m $R
-fi
-EOF
+    echo 'if [ "x$E'$i'" = "xOK" ]; then' >> /etc/vcontrold/2_mqtt.tmpl
+    echo '  mosquitto_pub -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t $MQTT_TOPIC/$C'$i' -m '$R'' >> /etc/vcontrold/2_mqtt.tmpl
+    echo 'fi' >> /etc/vcontrold/2_mqtt.tmpl
 done
 
 # Configure vcontrold.xml with the user-specified values
@@ -76,10 +80,10 @@ if [ "$VCONTROL_HOST" = "localhost" ]; then
 
     # Check if a custom config file2 is used and include -x option only if needed
     if [ "$use_custom_config_file_vcontrold" = true ]; then
-        bashio::log.info "Using custom vcontrold.xml with -x option."
+        bashio::log.info "Using custom vcontrold.xml."
         exec /usr/sbin/vcontrold -x "$config_file_vcontrold" -n -U root -d "$config_tty"
     else
-        bashio::log.info "Using default vcontrold.xml without -x option."
+        bashio::log.info "Using default vcontrold.xml."
         exec /usr/sbin/vcontrold -n -U root -d "$config_tty"
     fi
 else
