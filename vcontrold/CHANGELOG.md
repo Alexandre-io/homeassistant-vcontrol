@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.12.0
+
+- Code Optimization
+
 ## 1.11.0
 
 - Allow custom vcontrold.xml

@@ -1,86 +1,76 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
-# Start the example service
+# Start the vcontrold service
 # s6-overlay docs: https://github.com/just-containers/s6-overlay
 # ==============================================================================
 
 # Declare variables
 declare config_tty
-declare config_file
-declare config_file2
+declare config_file="vito.xml"
+declare config_file2="vcontrold.xml"
 declare config_deviceid
 declare config_commands
 
-## Fetch Vcontrold settings
-. /etc/services.d/get_vcontrold_settings.sh
+# Fetch Vcontrold settings
+source /etc/services.d/get_vcontrold_settings.sh
 
-## Get the 'message' key from the user config options.
+# Get configuration options from user
 config_tty=$(bashio::config 'tty')
-config_file=vito.xml
-config_file2=vcontrold.xml
 config_deviceid=$(bashio::config 'device_id')
 config_commands=$(bashio::config 'commands')
 
-## Check if custom vito.xml file exist
+# Check if custom vito.xml file exists
 if [ -f "/config/vcontrold/vito.xml" ]; then
-    bashio::log.info "Using a custom vito.xml file"
-    config_file=/config/vcontrold/vito.xml
+    bashio::log.info "Using custom vito.xml file"
+    config_file="/config/vcontrold/vito.xml"
 fi
 
-## Check if custom vcontrold.xml file exist
+# Check if custom vcontrold.xml file exists
 if [ -f "/config/vcontrold/vcontrold.xml" ]; then
-    bashio::log.info "Using a custom vcontrold.xml file"
-    config_file2=/config/vcontrold/vcontrold.xml
+    bashio::log.info "Using custom vcontrold.xml file"
+    config_file2="/config/vcontrold/vcontrold.xml"
 fi
 
-# Cleanup scripts
-rm /etc/vcontrold/1_mqtt_commands.txt || /bin/true
-rm /etc/vcontrold/2_mqtt.tmpl || /bin/true
+# Cleanup old scripts
+rm -f /etc/vcontrold/1_mqtt_commands.txt /etc/vcontrold/2_mqtt.tmpl || true
 echo '#!/bin/sh' > /etc/vcontrold/2_mqtt.tmpl
 
-# Configure scripts
-commands_array=(`echo $config_commands | tr '|' ' '`)
-i=0
-for command in "${commands_array[@]}"
-do
-   :
-    ((i=i+1))
-    cmd=$(echo $command | cut -d':' -f1)
-    type=$(echo $command | cut -d':' -f2)
+# Configure scripts based on commands
+IFS='|' read -r -a commands_array <<< "$config_commands"
+for i in "${!commands_array[@]}"; do
+    cmd=$(echo "${commands_array[$i]}" | cut -d':' -f1)
+    type=$(echo "${commands_array[$i]}" | cut -d':' -f2)
 
-    bashio::log.info "Setup command ${i}: ${cmd} with type ${type}"
-    echo $cmd >> /etc/vcontrold/1_mqtt_commands.txt
+    bashio::log.info "Configuring command $((i+1)): ${cmd} with type ${type}"
+    echo "$cmd" >> /etc/vcontrold/1_mqtt_commands.txt
 
-    R='$'$i''
-    if [[ $type == "STRING" ]]; then
-        R='"$R'$i'"'
-    fi
+    R='$'"$((i+1))"
+    [ "$type" == "STRING" ] && R='"$R'"$((i+1))"'"'
 
-    echo 'if [ "x$E'$i'" = "xOK" ]; then' >> /etc/vcontrold/2_mqtt.tmpl
-    echo '  mosquitto_pub -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t $MQTT_TOPIC/$C'$i' -m '$R'' >> /etc/vcontrold/2_mqtt.tmpl
-    echo 'fi' >> /etc/vcontrold/2_mqtt.tmpl
+    cat <<EOF >> /etc/vcontrold/2_mqtt.tmpl
+if [ "x\$E$((i+1))" = "xOK" ]; then
+  mosquitto_pub -h \$MQTT_HOST -p \$MQTT_PORT -u \$MQTT_USER -P \$MQTT_PASSWORD -t \$MQTT_TOPIC/\$C$((i+1)) -m $R
+fi
+EOF
 done
 
-# Set device ID
+# Configure vcontrold.xml with the user-specified values
 sed -i "s/#DEVICEID#/$config_deviceid/g" /etc/vcontrold/vcontrold.xml
-
-# Set vito.xml
 sed -i "s|#VITOXML#|$config_file|g" /etc/vcontrold/vcontrold.xml
-
-# Set vcontrold.xml
 sed -i "s|#VCONTROLDXML#|$config_file2|g" /etc/vcontrold/vcontrold.xml
 
+# Enable or disable debug mode based on user configuration
 if bashio::config.true 'debug'; then
     sed -i "s/#DEBUG#/y/g" /etc/vcontrold/vcontrold.xml
 else
     sed -i "s/#DEBUG#/n/g" /etc/vcontrold/vcontrold.xml
 fi
 
-## Run your program
-if [ "$VCONTROL_HOST" = "localhost" ] ; then
+# Start the vcontrold service or a dummy process for external control
+if [ "$VCONTROL_HOST" = "localhost" ]; then
     bashio::log.info "Starting local vcontrold..."
-    exec /usr/sbin/vcontrold -n -U root -d $config_tty
+    exec /usr/sbin/vcontrold -n -U root -d "$config_tty"
 else
-    # do nothing - needed as a dummy job to keep the dependency job running
+    bashio::log.info "vcontrold is not running locally. Keeping process alive."
     tail -f /dev/null
 fi

@@ -1,17 +1,13 @@
 #!/usr/bin/with-contenv bashio
 
+# Fetch and export refresh rate from configuration
 export REFRESH_RATE=$(bashio::config 'refresh')
 
-if bashio::config.has_value 'vcontrol_host'; then
-    export VCONTROL_HOST=$(bashio::config 'vcontrol_host')
-else
-    export VCONTROL_HOST="localhost"
-fi
+# Fetch VCONTROL_HOST and set to localhost by default if not provided
+export VCONTROL_HOST=$(bashio::config 'vcontrol_host' || echo "localhost")
 
-if bashio::config.has_value 'vcontrol_port'; then
-    export VCONTROL_PORT=$(bashio::config 'vcontrol_port')
-else
-    export VCONTROL_PORT="3002"
-fi
+# Fetch VCONTROL_PORT and set to 3002 by default if not provided
+export VCONTROL_PORT=$(bashio::config 'vcontrol_port' || echo "3002")
 
-bashio::log.info "Setting vcontrold host to $VCONTROL_HOST and port to $VCONTROL_PORT ..."
+# Log the configured VCONTROL host and port
+bashio::log.info "vcontrold will be set to host: $VCONTROL_HOST and port: $VCONTROL_PORT"

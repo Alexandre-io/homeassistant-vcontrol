@@ -1,14 +1,22 @@
 #!/usr/bin/with-contenv bashio
 # ==============================================================================
-# Start the example service
+# Start the MQTT-based vclient_sub service
 # s6-overlay docs: https://github.com/just-containers/s6-overlay
 # ==============================================================================
 
-## Fetch MQTT settings
-. /etc/services.d/get_mqtt_settings.sh
+# Fetch MQTT settings
+source /etc/services.d/get_mqtt_settings.sh
 
-## Fetch Vcontrold settings
-. /etc/services.d/get_vcontrold_settings.sh
+# Fetch Vcontrold settings
+source /etc/services.d/get_vcontrold_settings.sh
+
+# Ensure required environment variables are set
+if [[ -z "$MQTT_HOST" || -z "$MQTT_PORT" || -z "$MQTT_USER" || -z "$MQTT_PASSWORD" || -z "$MQTT_TOPIC" || -z "$VCONTROL_HOST" || -z "$VCONTROL_PORT" ]]; then
+    bashio::log.error "Missing required MQTT or Vcontrold environment variables."
+    exit 1
+fi
+
+bashio::log.info "Starting MQTT subscription to topic: $MQTT_TOPIC/#"
 
 ## Run your program
 while true ; do
@@ -26,3 +34,26 @@ while true ; do
     sleep $REFRESH_RATE
 done
 
+# Main loop
+while true; do
+    mosquitto_sub -v -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -t "$MQTT_TOPIC/#" | while read -r payload; do
+        # Parse the incoming MQTT message
+        topic=$(echo "$payload" | cut -d' ' -f1)
+        value=$(echo "$payload" | cut -d' ' -f2)
+
+        # Process only topics containing "/set"
+        if [[ "$topic" =~ "/set" ]]; then
+            command=$(echo "$topic" | cut -d'/' -f2)
+            bashio::log.info "Received command: [${command}] with value: ${value}"
+
+            # Send command to vclient
+            if vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" -o /dev/stdout -c "${command} ${value}"; then
+                bashio::log.info "Command [${command}] executed successfully."
+            else
+                bashio::log.error "Failed to execute command [${command}] with value: ${value}"
+            fi
+        fi
+    done
+    bashio::log.info "Sleeping for $REFRESH_RATE seconds before restarting subscription."
+    sleep "$REFRESH_RATE"
+done
