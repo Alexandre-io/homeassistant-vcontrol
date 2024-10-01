@@ -16,6 +16,9 @@ if [[ -z "$REFRESH_RATE" || -z "$VCONTROL_HOST" || -z "$VCONTROL_PORT" ]]; then
     exit 1
 fi
 
+# Pause execution for 5 seconds to ensure all services are fully initialized
+sleep 5
+
 # Run your program
 while true; do
     bashio::log.info "Executing vclient_pub command..."

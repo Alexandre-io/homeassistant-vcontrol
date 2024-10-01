@@ -7,7 +7,7 @@ export REFRESH_RATE=$(bashio::config 'refresh')
 if bashio::config.has_value 'vcontrol_host'; then
     export VCONTROL_HOST=$(bashio::config 'vcontrol_host')
 else
-    bashio::log.warning "vcontrol_host not set in configuration. Defaulting to 'localhost'."
+    bashio::log.info "vcontrol_host not set in configuration. Defaulting to 'localhost'."
     export VCONTROL_HOST="localhost"
 fi
 
@@ -15,7 +15,7 @@ fi
 if bashio::config.has_value 'vcontrol_port'; then
     export VCONTROL_PORT=$(bashio::config 'vcontrol_port')
 else
-    bashio::log.warning "vcontrol_port not set in configuration. Defaulting to '3002'."
+    bashio::log.info "vcontrol_port not set in configuration. Defaulting to '3002'."
     export VCONTROL_PORT="3002"
 fi
 
