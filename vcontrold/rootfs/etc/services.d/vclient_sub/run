@@ -27,7 +27,7 @@ while true; do
 
         # Process only topics containing "/set"
         if [[ "$topic" =~ "/set" ]]; then
-            command=$(echo "$topic" | cut -d'/' -f2)
+            command=${topic##*/}
             bashio::log.info "Received command: [${command}] with value: ${value}"
 
             # Send command to vclient
