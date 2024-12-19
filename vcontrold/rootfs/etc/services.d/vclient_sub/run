@@ -23,7 +23,7 @@ while true; do
     mosquitto_sub -v -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -t "$MQTT_TOPIC/#" | while read -r payload; do
         # Parse the incoming MQTT message
         topic=$(echo "$payload" | cut -d' ' -f1)
-        value=$(echo "$payload" | cut -d' ' -f2)
+        value=$(echo "$payload" | cut -d' ' -f2-)
 
         # Process only topics containing "/set"
         if [[ "$topic" =~ "/set" ]]; then
