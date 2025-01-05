@@ -18,32 +18,16 @@ fi
 
 bashio::log.info "Starting MQTT subscription to topic: $MQTT_TOPIC/#"
 
-## Run your program
-while true ; do
-    mosquitto_sub -v -h $MQTT_HOST -p $MQTT_PORT -u $MQTT_USER -P $MQTT_PASSWORD -t "$MQTT_TOPIC/#" | while read -r payload
-    do
-        # Here is the callback to execute whenever you receive a message:
-        topic=$(echo $payload | cut -d' ' -f1)
-        value=$(echo $payload | cut -d' ' -f2)
-        if [[ $topic =~ "/set" ]]; then
-            command=$(echo $topic | cut -d'/' -f2)
-            bashio::log.info "Sending command: [${command}]: ${value}"
-            vclient -h $VCONTROL_HOST -p $VCONTROL_PORT -o /dev/stdout -c "${command} ${value}"
-        fi
-    done
-    sleep $REFRESH_RATE
-done
-
 # Main loop
 while true; do
     mosquitto_sub -v -h "$MQTT_HOST" -p "$MQTT_PORT" -u "$MQTT_USER" -P "$MQTT_PASSWORD" -t "$MQTT_TOPIC/#" | while read -r payload; do
         # Parse the incoming MQTT message
         topic=$(echo "$payload" | cut -d' ' -f1)
-        value=$(echo "$payload" | cut -d' ' -f2)
+        value=$(echo "$payload" | cut -d' ' -f2-)
 
         # Process only topics containing "/set"
         if [[ "$topic" =~ "/set" ]]; then
-            command=$(echo "$topic" | cut -d'/' -f2)
+            command=${topic##*/}
             bashio::log.info "Received command: [${command}] with value: ${value}"
 
             # Send command to vclient
