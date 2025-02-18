@@ -69,7 +69,7 @@ schema:
   debug: "bool?"
   commands:
     - "str"
-image: "jodli/{arch}-homeassistant-vcontrol"
+image: "ghcr.io/jodli/{arch}-homeassistant-vcontrol"
 usb: true
 apparmor: false
 ports:
