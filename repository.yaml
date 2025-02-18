@@ -1,4 +1,4 @@
 # https://developers.home-assistant.io/docs/add-ons/repository#repository-configuration
 name: Vcontrol Home Assistant add-on repository
-url: "https://github.com/Alexandre-io/homeassistant-vcontrol"
-maintainer: Alexandre L.
+url: "https://github.com/jodli/homeassistant-vcontrol"
+maintainer: jodli
