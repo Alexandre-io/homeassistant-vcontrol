@@ -1,5 +1,9 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.13.0
+
+- Fix bug when setting commands with spaces
+
 ## 1.12.0-5
 
 - Code Optimization
