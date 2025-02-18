@@ -1,9 +1,9 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Vcontrol add-on
-version: "1.12.5"
+version: "1.13.0"
 slug: vcontrold
 description: Vcontrol add-on
-url: "https://github.com/Alexandre-io/homeassistant-vcontrol"
+url: "https://github.com/jodli/homeassistant-vcontrol"
 arch:
   - armhf
   - armv7
@@ -69,7 +69,7 @@ schema:
   debug: "bool?"
   commands:
     - "str"
-image: "alexandreio/{arch}-homeassistant-vcontrol"
+image: "jodli/{arch}-homeassistant-vcontrol"
 usb: true
 apparmor: false
 ports:
@@ -83,6 +83,6 @@ devices:
   - /dev/ttyUSB1
   - /dev/ttyUSB2
   - /dev/ttyUSB3
-map: 
+map:
   - type: config
     read_only: False
