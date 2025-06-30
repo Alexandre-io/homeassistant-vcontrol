@@ -120,7 +120,7 @@
       <enum bytes="01" text="1"/>
       <!-- At least for device 20CB the heating circuit pump returns
            status 03 when it's on and the heating runs in in night mode -->
-      <enum bytes='03' text='2'/>
+      <enum bytes="03" text="2"/>
       <enum text="NOT OK"/>
     </unit>
     <unit name="BetriebsArt">
@@ -132,6 +132,16 @@
       <enum bytes="04" text="H+WW FS"/>
       <enum bytes="03" text="H+WW"/>
       <enum bytes="05" text="ABSCHALT"/>
+      <enum text="UNKNOWN"/>
+    </unit>
+    <unit name="Betriebsart">
+      <abbrev>BA4</abbrev>
+      <type>enum</type>
+      <enum bytes="00" text="Abschalt"/>
+      <enum bytes="01" text="WW"/>
+      <enum bytes="02" text="H+WW"/>
+      <enum bytes="03" text="Dauernd Reduziert"/>
+      <enum bytes="04" text="Dauernd Normal"/>
       <enum text="UNKNOWN"/>
     </unit>
     <unit name="SetReturnStatus">
@@ -168,7 +178,7 @@
       <enum bytes="9A" text="Solar: Unterbrechung Kollektortemperatursensor"/>
       <enum bytes="9B" text="Solar: Unterbrechung Sensor S3"/>
       <enum bytes="9C" text="Solar: Unterbrechung Speichertemperatursensor"/>
-      <enum bytes='9E' text='Solar: Zu geringer/kein Volumenstrom oder Temperaturwächter ausgelöst'/>
+      <enum bytes="9E" text="Solar: Zu geringer/kein Volumenstrom oder Temperaturwächter ausgelöst"/>
       <enum bytes="9F" text="Solar: Fehlermeldung Solarteil (siehe Solarregler)"/>
       <enum bytes="A7" text="Bedienteil defekt"/>
       <enum bytes="B0" text="Kurzschluss Abgastemperatursensor"/>
@@ -198,9 +208,20 @@
       <enum bytes="DB" text="Kurzschluss Raumtemperatursensor, Heizkreis M2"/>
       <enum bytes="DD" text="Unterbrechung Raumtemperatursensor, Heizkreis M1"/>
       <enum bytes="DE" text="Unterbrechung Raumtemperatursensor, Heizkreis M2"/>
+      <enum bytes="E1" text="Brenner auf Stoerung. Ionisationsstrom waehrend des Kalibrierens zu hoch"/>
+      <enum bytes="E2" text="Brenner auf Stoerung. Keine Kalibration wegen zu geringen Volumenstrom"/>
+      <enum bytes="E3" text="Brenner auf Stoerung. Zu geringe Waermeabnahme waehrend des Kalibrierens. Temperaturwaechter hat abgeschaltet."/>
       <enum bytes="E4" text="Fehler Versorgungsspannung"/>
       <enum bytes="E5" text="Interner Fehler (Ionisationselektrode)"/>
       <enum bytes="E6" text="Abgas- / Zuluftsystem verstopft"/>
+      <enum bytes="E7" text="Brenner auf Stoerung. Ionisationsstrom waehrend des Kalibrierens zu gering"/>
+      <enum bytes="E8" text="Brenner auf Stoerung. Ionisationsstrom nicht im gueltigen Bereich"/>
+      <enum bytes="EA" text="Brenner auf Stoerung. Ionisationsstrom waehrend des Kalibrierens nicht im gueltigen Bereich"/>
+      <enum bytes="EB" text="Brenner auf Stoerung. Wiederholter Flammenverlust waehrend des Kalibrierens"/>
+      <enum bytes="EC" text="Brenner auf Stoerung. Parameterfehler waehrend des Kalibrierens"/>
+      <enum bytes="ED" text="Brenner auf Stoerung. Interner Fehler"/>
+      <enum bytes="EE" text="Brenner auf Stoerung. Flammensignal ist bei Brennerstart nicht vorhanden oder zu gering"/>
+      <enum bytes="EF" text="Brenner auf Stoerung. Flammenverlust direkt nach Flammenbildung (waehrend der Sicherheitszeit)"/>
       <enum bytes="F0" text="Interner Fehler (Regelung tauschen)"/>
       <enum bytes="F1" text="Abgastemperaturbegrenzer ausgeloest"/>
       <enum bytes="F2" text="Temperaturbegrenzer ausgeloest"/>
