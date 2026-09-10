@@ -1,4 +1,7 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
+## 1.13.5
+
+- Add FLOCK again
 
 ## 1.13.4
 
