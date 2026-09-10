@@ -1,23 +1,27 @@
 #!/usr/bin/with-contenv bashio
 
-# Fetch and export refresh rate from configuration
-export REFRESH_RATE=$(bashio::config 'refresh')
-
-# Fetch VCONTROL_HOST and set to localhost by default if not provided
+REFRESH_RATE=$(bashio::config 'refresh')
+COMMAND_TIMEOUT=120
+VCONTROL_HOST=localhost
+VCONTROL_PORT=3002
+if bashio::config.has_value 'command_timeout'; then
+    COMMAND_TIMEOUT=$(bashio::config 'command_timeout')
+fi
 if bashio::config.has_value 'vcontrol_host'; then
-    export VCONTROL_HOST=$(bashio::config 'vcontrol_host')
-else
-    bashio::log.info "vcontrol_host not set in configuration. Defaulting to 'localhost'."
-    export VCONTROL_HOST="localhost"
+    VCONTROL_HOST=$(bashio::config 'vcontrol_host')
 fi
-
-# Fetch VCONTROL_PORT and set to 3002 by default if not provided
 if bashio::config.has_value 'vcontrol_port'; then
-    export VCONTROL_PORT=$(bashio::config 'vcontrol_port')
-else
-    bashio::log.info "vcontrol_port not set in configuration. Defaulting to '3002'."
-    export VCONTROL_PORT="3002"
+    VCONTROL_PORT=$(bashio::config 'vcontrol_port')
 fi
 
-# Log the configured VCONTROL host and port
-bashio::log.info "vcontrold will be set to host: $VCONTROL_HOST and port: $VCONTROL_PORT"
+if [[ ! "${REFRESH_RATE}" =~ ^[1-9][0-9]{0,4}$ ]] || (( REFRESH_RATE > 86400 )); then
+    bashio::exit.nok "refresh must be between 1 and 86400 seconds."
+fi
+if [[ ! "${COMMAND_TIMEOUT}" =~ ^[1-9][0-9]{0,3}$ ]] || (( COMMAND_TIMEOUT > 3600 )); then
+    bashio::exit.nok "command_timeout must be between 1 and 3600 seconds."
+fi
+if [[ ! "${VCONTROL_PORT}" =~ ^[1-9][0-9]{0,4}$ ]] || (( VCONTROL_PORT > 65535 )); then
+    bashio::exit.nok "vcontrol_port must be between 1 and 65535."
+fi
+export REFRESH_RATE COMMAND_TIMEOUT VCONTROL_HOST VCONTROL_PORT
+bashio::log.info "vcontrold endpoint: ${VCONTROL_HOST}:${VCONTROL_PORT}; poll timeout: ${COMMAND_TIMEOUT}s."

@@ -5,7 +5,6 @@
 # ==============================================================================
 
 # Declare variables
-declare auth_arg
 declare cmd
 declare command_entry
 declare config_commands_raw
@@ -26,7 +25,6 @@ declare -r default_vcontrold_config="${vcontrold_config_dir}/vcontrold.xml"
 declare -r runtime_dir="${RUNTIME_DIR:-/run/vcontrold}"
 declare -r runtime_commands_file="${runtime_dir}/1_mqtt_commands.txt"
 declare -r runtime_template_file="${runtime_dir}/2_mqtt.tmpl"
-declare -r runtime_output_script="${runtime_dir}/3_mqtt_pub.sh"
 declare -r runtime_vcontrold_config="${runtime_dir}/vcontrold.xml"
 declare -r tail_bin="${TAIL_BIN:-tail}"
 declare -r vcontrold_bin="${VCONTROLD_BIN:-/usr/sbin/vcontrold}"
@@ -42,9 +40,8 @@ is_local_vcontrold() {
     esac
 }
 
-# Fetch MQTT settings
+# Preparing the daemon must not depend on the MQTT broker being available.
 source "${services_dir}/command_utils.sh"
-source "${services_dir}/get_mqtt_settings.sh"
 
 # Fetch Vcontrold settings
 source "${services_dir}/get_vcontrold_settings.sh"
@@ -82,8 +79,10 @@ config_file_vcontrold="${runtime_vcontrold_config}"
 
 # Prepare runtime files
 mkdir -p "${runtime_dir}"
-rm -f "${runtime_commands_file}" "${runtime_template_file}" "${runtime_output_script}"
-printf '#!/bin/sh\n' > "${runtime_template_file}"
+umask 077
+rm -f "${runtime_dir}/ready"
+: > "${runtime_commands_file}.tmp"
+: > "${runtime_template_file}.tmp"
 
 # Configure scripts based on commands
 load_vcontrold_commands_array "${config_commands_raw}" commands_array
@@ -101,35 +100,35 @@ do
     cmd=${command_entry%%:*}
     type=${command_entry#*:}
 
-    if [[ -z "${cmd}" ]]; then
-        bashio::log.warning "Skipping empty command entry at position ${i}."
-        ((i=i-1))
+    if [[ ! "${cmd}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ || ! "${type}" =~ ^(FLOAT|STRING)$ ]]; then
+        bashio::log.warning "Skipping invalid command entry at position ${i}: ${command_entry}"
+        i=$((i-1))
         continue
     fi
 
     bashio::log.info "Configuring command ${i}: ${cmd} with type ${type}"
-    printf '%s\n' "${cmd}" >> "${runtime_commands_file}"
+    printf '%s\n' "${cmd}" >> "${runtime_commands_file}.tmp"
 
     value_placeholder="\$${i}"
     if [[ "${type}" == "STRING" ]]; then
         value_placeholder="\$R${i}"
     fi
 
-    printf 'if [ "x$E%d" = "xOK" ]; then\n' "${i}" >> "${runtime_template_file}"
-    printf '  mosquitto_pub -h %q -p %q' "${MQTT_HOST}" "${MQTT_PORT}" >> "${runtime_template_file}"
-    for auth_arg in "${MQTT_AUTH_ARGS[@]}"; do
-        printf ' %q' "${auth_arg}" >> "${runtime_template_file}"
-    done
-    printf ' -t %q/$C%d -m "%s"\n' "${MQTT_TOPIC}" "${i}" "${value_placeholder}" >> "${runtime_template_file}"
-    printf 'fi\n' >> "${runtime_template_file}"
+    # Text records, never executable shell. US separates fields; RS ends a record.
+    # These control characters preserve spaces, quotes and multiline STRING values.
+    # shellcheck disable=SC2016 # vclient expands these placeholders later.
+    printf '$C%d\037$E%d\037%s\036\n' "${i}" "${i}" "${value_placeholder}" >> "${runtime_template_file}.tmp"
 done
 
-if [[ ! -s "${runtime_commands_file}" ]]; then
+if [[ ! -s "${runtime_commands_file}.tmp" ]]; then
     bashio::exit.nok "No valid commands configured."
 fi
 
 cp "${config_file_vcontrold_source}" "${config_file_vcontrold}"
 
+if [[ ! "${config_deviceid}" =~ ^[[:xdigit:]]{4}$ ]]; then
+    bashio::exit.nok "device_id must contain exactly four hexadecimal digits."
+fi
 sed -i "s/#DEVICEID#/${config_deviceid}/g" "${config_file_vcontrold}"
 sed -i "s|#VITOXML#|${config_file_vito}|g" "${config_file_vcontrold}"
 
@@ -142,11 +141,22 @@ fi
 # Keep custom vcontrold.xml files compatible when they still reference legacy or relative vito.xml paths.
 sed -i "s|href=\"/config/vcontrold/vito.xml\"|href=\"${config_file_vito}\"|g" "${config_file_vcontrold}"
 sed -i "s|href=\"/homeassistant/vcontrold/vito.xml\"|href=\"${config_file_vito}\"|g" "${config_file_vcontrold}"
-sed -i "s|href=\"./vito.xml\"|href=\"${config_file_vito}\"|g" "${config_file_vcontrold}"
+sed -i "s|href=\"\./vito.xml\"|href=\"${config_file_vito}\"|g" "${config_file_vcontrold}"
 sed -i "s|href=\"vcontrold/vito.xml\"|href=\"${config_file_vito}\"|g" "${config_file_vcontrold}"
 sed -i "s|href=\"vito.xml\"|href=\"${config_file_vito}\"|g" "${config_file_vcontrold}"
 
 # Start the vcontrold service or a dummy process for external control
+mv "${runtime_commands_file}.tmp" "${runtime_commands_file}"
+mv "${runtime_template_file}.tmp" "${runtime_template_file}"
+# A successful publication updates the heartbeat even for partially supported devices.
+# Allow three complete retry intervals and at least five minutes without data.
+health_max_age=$((3 * (REFRESH_RATE + COMMAND_TIMEOUT + 15)))
+(( health_max_age >= 300 )) || health_max_age=300
+printf '%s\n' "${health_max_age}" > "${runtime_dir}/health_max_age.tmp"
+mv "${runtime_dir}/health_max_age.tmp" "${runtime_dir}/health_max_age"
+[[ -f "${runtime_dir}/started" ]] || touch "${runtime_dir}/started"
+touch "${runtime_dir}/ready"
+
 if is_local_vcontrold; then
     bashio::log.info "Starting local vcontrold..."
 
@@ -154,7 +164,13 @@ if is_local_vcontrold; then
         bashio::exit.nok "A tty device is required when running local vcontrold."
     fi
 
-    exec "${vcontrold_bin}" -x "${config_file_vcontrold}" -n -U root -d "${config_tty}"
+    # vcontrold also accepts a network serial endpoint (host:port).
+    while [[ "${config_tty}" == /* && ! -c "${config_tty}" ]]; do
+        bashio::log.warning "Waiting for serial device ${config_tty}. Prefer a stable /dev/serial/by-id/ path."
+        sleep 5
+    done
+
+    exec "${vcontrold_bin}" -x "${config_file_vcontrold}" -n -U root -d "${config_tty}" -p "${VCONTROL_PORT}"
 fi
 
 bashio::log.info "Using remote vcontrold at ${VCONTROL_HOST}:${VCONTROL_PORT}. Keeping process alive."

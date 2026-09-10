@@ -5,3 +5,7 @@ updates:
     schedule:
       interval: weekly
       time: "06:00"
+  - package-ecosystem: "docker"
+    directory: "/vcontrold"
+    schedule:
+      interval: weekly

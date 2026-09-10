@@ -11,23 +11,36 @@ This repository contains the following add-ons
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]
 
-<!--
+## Development
 
-Notes to developers after forking or using the github template feature:
-- While developing comment out the 'image' key from 'example/config.yaml' to make the supervisor build the addon
-  - Remember to put this back when pushing up your changes.
-- When you merge to the 'main' branch of your repository a new build will be triggered.
-  - Make sure you adjust the 'version' key in 'example/config.yaml' when you do that.
-  - Make sure you update 'example/CHANGELOG.md' when you do that.
-  - The first time this runs you might need to adjust the image configuration on github container registry to make it public
-- Adjust the 'image' key in 'example/config.yaml' so it points to your username instead of 'home-assistant'.
-  - This is where the build images will be published to.
-- Rename the example directory.
-  - The 'slug' key in 'example/config.yaml' should match the directory name.
-- Adjust all keys/url's that points to 'home-assistant' to now point to your user/fork.
-- Share your repository on the forums https://community.home-assistant.io/c/projects/9
-- Do awesome stuff!
- -->
+The extension is a Bashio/s6 bridge around upstream vcontrold 0.98.12. Runtime data
+is stored in `/run/vcontrold`; custom XML files remain in the mapped config folders.
+
+Run the fast shell regression tests:
+
+```sh
+bash tests/run.sh
+```
+
+Build and exercise the real Bashio, vclient and Mosquitto clients against a local
+boiler simulator and a disposable MQTT broker (no heating hardware needed):
+
+```sh
+docker build --build-arg BUILD_ARCH=amd64 --build-arg BUILD_VERSION=1.14.0 -t vcontrol-audit:local vcontrold
+docker build -f tests/Dockerfile -t vcontrol-audit:tests .
+docker run --rm vcontrol-audit:tests
+bash tests/container_smoke.sh
+```
+
+Use `BUILD_ARCH=aarch64` on an ARM64 machine. CI builds and tests on native amd64
+and ARM64 runners, then publishes the tested images to the existing Docker Hub
+repositories only after both architectures pass and the extension version changes
+on `main`. Pull requests and documentation-only updates never publish.
+`build.yaml` is no longer used; base image and labels live in the Dockerfile.
+Bump `vcontrold/config.yaml` and update `vcontrold/CHANGELOG.md` for each release.
+
+See [configuration and recovery instructions](vcontrold/DOCS.md).
+
 
 [aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
 [amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg

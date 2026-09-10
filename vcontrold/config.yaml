@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Vcontrol add-on
-version: "1.13.4"
+version: "1.14.0"
 slug: vcontrold
 description: MQTT bridge for Viessmann vcontrold
 url: "https://github.com/Alexandre-io/homeassistant-vcontrol"
@@ -56,14 +56,15 @@ options:
     - getNiveauM2:FLOAT
 schema:
   tty: "str"
-  refresh: "int"
+  refresh: "int(1,86400)"
+  command_timeout: "int(1,3600)?"
   device_id: "str"
   vcontrol_host: "str?"
-  vcontrol_port: "int?"
+  vcontrol_port: "port?"
   mqtt_host: "str?"
-  mqtt_port: "int?"
+  mqtt_port: "port?"
   mqtt_user: "str?"
-  mqtt_password: "str?"
+  mqtt_password: "password?"
   mqtt_topic: "str"
   debug: "bool?"
   commands:
@@ -76,7 +77,7 @@ ports:
 ports_description:
   3002/tcp: "Vcontrol daemon"
 services:
-  - mqtt:need
+  - mqtt:want
 map:
   - type: addon_config
   - type: homeassistant_config

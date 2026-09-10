@@ -1,116 +1,108 @@
 name: Builder
 
-env:
-  BUILD_ARGS: "--test"
-  MONITORED_FILES: "build.yaml config.yaml Dockerfile rootfs"
-
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  init:
-    runs-on: ubuntu-latest
-    name: Initialize builds
-    outputs:
-      changed_addons: ${{ steps.changed_addons.outputs.addons }}
-      changed: ${{ steps.changed_addons.outputs.changed }}
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v6.0.2
-
-      - name: Get changed files
-        id: changed_files
-        uses: jitterbit/get-changed-files@v1
-
-      - name: Find add-on directories
-        id: addons
-        uses: home-assistant/actions/helpers/find-addons@master
-
-      - name: Get changed add-ons
-        id: changed_addons
-        run: |
-          declare -a changed_addons
-          for addon in ${{ steps.addons.outputs.addons }}; do
-            if [[ "${{ steps.changed_files.outputs.all }}" =~ $addon ]]; then
-              for file in ${{ env.MONITORED_FILES }}; do
-                  if [[ "${{ steps.changed_files.outputs.all }}" =~ $addon/$file ]]; then
-                    if [[ ! "${changed_addons[@]}" =~ $addon ]]; then
-                      changed_addons+=("\"${addon}\",");
-                    fi
-                  fi
-              done
-            fi
-          done
-
-          changed=$(echo ${changed_addons[@]} | rev | cut -c 2- | rev)
-
-          if [[ -n ${changed} ]]; then
-            echo "Changed add-ons: $changed";
-            echo "changed=true" >> $GITHUB_OUTPUT;
-            echo "addons=[$changed]" >> $GITHUB_OUTPUT;
-          else
-            echo "No add-on had any monitored files changed (${{ env.MONITORED_FILES }})";
-          fi
   build:
-    needs: init
-    runs-on: ubuntu-latest
-    if: needs.init.outputs.changed == 'true'
-    name: Build ${{ matrix.arch }} ${{ matrix.addon }} add-on
+    name: Build and test ${{ matrix.arch }}
+    outputs:
+      publish: ${{ steps.version.outputs.publish }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            platform: linux/amd64
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Read release version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.before }}
+        run: |
+          version=$(awk -F '"' '/^version:/ {print $2}' vcontrold/config.yaml)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          publish=false
+          if [[ "$EVENT_NAME" == push ]]; then
+            previous=$(git show "${BASE_SHA}:vcontrold/config.yaml" 2>/dev/null | awk -F '"' '/^version:/ {print $2}' || true)
+            if [[ "$version" != "$previous" ]]; then
+              publish=true
+            fi
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v4.3.0
+      - name: Build image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: ./vcontrold
+          platforms: ${{ matrix.platform }}
+          load: true
+          tags: vcontrol-audit:local
+          build-args: |
+            BUILD_ARCH=${{ matrix.arch }}
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha,scope=vcontrol-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=vcontrol-${{ matrix.arch }}
+      - name: Run regression and runtime tests
+        run: |
+          bash tests/run.sh
+          docker build -f tests/Dockerfile -t vcontrol-audit:tests .
+          docker run --rm vcontrol-audit:tests
+          bash tests/container_smoke.sh
+          docker run --rm --entrypoint bash vcontrol-audit:tests -c \
+            'shellcheck -s bash -e SC1091,SC2034 /etc/services.d/*.sh /etc/services.d/*/run /etc/services.d/*/finish'
+      - name: Save tested image
+        if: steps.version.outputs.publish == 'true'
+        run: docker save vcontrol-audit:local | gzip > image.tar.gz
+      - uses: actions/upload-artifact@v7.0.1
+        if: steps.version.outputs.publish == 'true'
+        with:
+          name: image-${{ matrix.arch }}
+          path: image.tar.gz
+          retention-days: 1
+
+  publish:
+    name: Publish tested ${{ matrix.arch }} image
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
-        addon: ${{ fromJson(needs.init.outputs.changed_addons) }}
-        arch: ["aarch64", "amd64", "armhf", "armv7", "i386"]
-    permissions:
-      contents: read
-      packages: write
-
+        arch: [amd64, aarch64]
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v6.0.2
-
-      - name: Get information
-        id: info
-        uses: home-assistant/actions/helpers/info@master
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.1
         with:
-          path: "./${{ matrix.addon }}"
-
-      - name: Check if add-on should be built
-        id: check
-        run: |
-          if [[ "${{ steps.info.outputs.image }}" == "null" ]]; then
-            echo "Image property is not defined, skipping build"
-            echo "build_arch=false" >> $GITHUB_OUTPUT;
-          elif [[ "${{ steps.info.outputs.architectures }}" =~ ${{ matrix.arch }} ]]; then
-            echo "build_arch=true" >> $GITHUB_OUTPUT;
-            echo "image=$(echo ${{ steps.info.outputs.image }} | cut -d'/' -f3)" >> $GITHUB_OUTPUT;
-            if [[ -z "${{ github.head_ref }}" ]] && [[ "${{ github.event_name }}" == "push" ]]; then
-                echo "BUILD_ARGS=" >> $GITHUB_ENV;
-            fi
-          else
-            echo "${{ matrix.arch }} is not a valid arch for ${{ matrix.addon }}, skipping build";
-            echo "build_arch=false" >> $GITHUB_OUTPUT;
-          fi
-
-      - name: Login to GitHub Container Registry
-        if: env.BUILD_ARGS != '--test'
-        uses: docker/login-action@v4.1.0
+          name: image-${{ matrix.arch }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4.6.0
         with:
           username: alexandreio
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build ${{ matrix.addon }} add-on
-        if: steps.check.outputs.build_arch == 'true'
-        uses: home-assistant/builder@2026.03.2
-        with:
-          args: |
-            ${{ env.BUILD_ARGS }} \
-            --${{ matrix.arch }} \
-            --target /data/${{ matrix.addon }} \
-            --image "${{ steps.check.outputs.image }}" \
-            --docker-hub "alexandreio" \
-            --addon
+      - name: Publish the tested release
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          version=$(awk -F '"' '/^version:/ {print $2}' vcontrold/config.yaml)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          docker load --input image.tar.gz
+          image="alexandreio/${ARCH}-homeassistant-vcontrol:${version}"
+          docker tag vcontrol-audit:local "$image"
+          docker push "$image"

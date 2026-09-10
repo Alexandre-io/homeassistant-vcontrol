@@ -5,6 +5,9 @@ configuration:
   refresh:
     name: "Refresh rate"
     description: "The waiting time between two executions."
+  command_timeout:
+    name: "Command timeout"
+    description: "Maximum duration of a vcontrold read cycle or setter, in seconds (default: 120). MQTT publications have a separate 10-second timeout."
   device_id:
     name: "Device ID"
     description: "The device identifier. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"

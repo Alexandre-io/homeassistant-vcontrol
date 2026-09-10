@@ -1,5 +1,18 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## 1.14.0
+
+- Recover from MQTT service unavailability and broker restarts without halting the entire extension
+- Bound vclient reads and writes with the optional `command_timeout` setting (default 120 seconds)
+- Publish data directly with acknowledged, retained MQTT states; remove generated shell execution and misleading success logs
+- Ignore retained setters and reject malformed or oversized writes; check daemon-reported errors
+- Add a Docker healthcheck based on successful MQTT publications for Supervisor Watchdog recovery
+- Wait for local serial devices while preserving network Optolink support; honor the configured local daemon port
+- Validate polling intervals, ports, command types and device IDs; preserve custom and legacy XML configurations
+- Update the Debian base to `trixie-2026.08.0` and migrate the retired Home Assistant builder to native Docker BuildKit
+- Test both supported architectures before publishing their images; add real vclient/Mosquitto regression tests and ShellCheck
+- Correct configuration paths and Home Assistant MQTT examples in the documentation
+
 ## 1.13.4
 
 - Fix startup failure when using a legacy custom `vito.xml` from `/homeassistant/vcontrold`

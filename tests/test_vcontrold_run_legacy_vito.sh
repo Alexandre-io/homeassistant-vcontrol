@@ -48,7 +48,7 @@ chmod +x "${tmp_dir}/bin/mock-vcontrold"
     export VCONTROLD_BIN="${tmp_dir}/bin/mock-vcontrold"
     export TEST_CAPTURE_DIR="${tmp_dir}/capture"
 
-    export BASHIO_CONFIG_tty="/dev/ttyUSB0"
+    export BASHIO_CONFIG_tty="/dev/null"
     export BASHIO_CONFIG_device_id="2098"
     export BASHIO_CONFIG_refresh="60"
     export BASHIO_CONFIG_commands=$'getTempA:FLOAT'

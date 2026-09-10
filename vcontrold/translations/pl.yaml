@@ -5,6 +5,9 @@ configuration:
   refresh:
     name: "Odświeżanie"
     description: "Czas oczekiwania pomiędzy uruchomieniami."
+  command_timeout:
+    name: "Limit czasu poleceń"
+    description: "Maksymalny czas cyklu odczytu vcontrold lub polecenia zapisu w sekundach (domyślnie: 120). Publikacja MQTT ma osobny limit 10 sekund."
   device_id:
     name: "ID urządzenia"
     description: "Identyfikator urządzenia. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"

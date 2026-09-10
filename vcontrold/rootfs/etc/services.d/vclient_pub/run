@@ -1,47 +1,71 @@
 #!/usr/bin/with-contenv bashio
-# ==============================================================================
-# Start the vclient_pub service
-# s6-overlay docs: https://github.com/just-containers/s6-overlay
-# ==============================================================================
+# Poll vcontrold and publish data without executing its output as shell code.
 
-# Fetch MQTT settings
-source /etc/services.d/get_mqtt_settings.sh
-
-# Fetch Vcontrold settings
-source /etc/services.d/get_vcontrold_settings.sh
-
-declare wait_logged=false
-declare -r runtime_dir="/run/vcontrold"
+declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
+declare -r runtime_dir="${RUNTIME_DIR:-/run/vcontrold}"
 declare -r runtime_commands_file="${runtime_dir}/1_mqtt_commands.txt"
 declare -r runtime_template_file="${runtime_dir}/2_mqtt.tmpl"
-declare -r runtime_output_script="${runtime_dir}/3_mqtt_pub.sh"
+declare -r runtime_output_file="${runtime_dir}/values.txt"
+declare -r separator=$'\037'
+declare record command status value exitcode published failed expected
 
-# Ensure required variables are set
-if [[ -z "$MQTT_HOST" || -z "$MQTT_PORT" || -z "$REFRESH_RATE" || -z "$VCONTROL_HOST" || -z "$VCONTROL_PORT" ]]; then
-    bashio::log.error "Missing essential environment variables. Check MQTT and Vcontrold settings."
-    exit 1
-fi
+source "${services_dir}/get_vcontrold_settings.sh"
+source "${services_dir}/get_mqtt_settings.sh"
+umask 077
 
-until [[ -s "${runtime_commands_file}" && -s "${runtime_template_file}" ]]; do
-    if [[ "${wait_logged}" = false ]]; then
-        bashio::log.info "Waiting for generated vclient_pub runtime files."
-        wait_logged=true
-    fi
-
-    sleep 1
-done
-
-# Run your program
 while true; do
-    bashio::log.info "Executing vclient_pub command..."
-    if vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" -f "${runtime_commands_file}" \
-               -t "${runtime_template_file}" -x "${runtime_output_script}"; then
-        exitcode=0
-        bashio::log.info "vclient_pub executed successfully."
+    until [[ -f "${runtime_dir}/ready" && -s "${runtime_commands_file}" && -s "${runtime_template_file}" ]]; do
+        bashio::log.info "Waiting for complete vcontrold runtime files."
+        sleep 2
+    done
+
+    # vclient -x incorrectly returns system()'s wait status as an exit code.
+    # Read into a data file and check each MQTT publication ourselves instead.
+    rm -f "${runtime_output_file}"
+    if timeout --kill-after=5 "${COMMAND_TIMEOUT}" \
+        vclient -h "${VCONTROL_HOST}" -p "${VCONTROL_PORT}" -f "${runtime_commands_file}" \
+        -t "${runtime_template_file}" -o "${runtime_output_file}"; then
+        published=0
+        failed=0
+        expected=$(wc -l < "${runtime_commands_file}")
+        while IFS= read -r -d $'\036' record; do
+            record=${record#$'\n'}
+            command=${record%%"${separator}"*}
+            record=${record#*"${separator}"}
+            status=${record%%"${separator}"*}
+            value=${record#*"${separator}"}
+
+            if [[ ! "${command}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ || "${status}" != OK || "${value}" == *"${separator}"* ]]; then
+                bashio::log.warning "Invalid or failed vcontrold response for ${command}: ${status}"
+                failed=1
+                continue
+            fi
+
+            # QoS 1 confirms broker receipt. Retained states survive Core restarts.
+            if timeout --kill-after=5 10 mosquitto_pub -h "${MQTT_HOST}" -p "${MQTT_PORT}" \
+                "${MQTT_AUTH_ARGS[@]}" -q 1 -r -t "${MQTT_TOPIC}/${command}" -m "${value}"; then
+                ((published+=1))
+                touch "${runtime_dir}/last_success"
+            else
+                bashio::log.error "MQTT publication failed for ${command}; retrying on the next poll."
+                failed=1
+                # Refresh Supervisor credentials, which may have changed on restart.
+                source "${services_dir}/get_mqtt_settings.sh"
+                break
+            fi
+        done < "${runtime_output_file}"
+        if (( failed == 0 && published == expected && published > 0 )); then
+            bashio::log.info "Published ${published} values to MQTT."
+        else
+            bashio::log.warning "Incomplete poll: published ${published}/${expected} values."
+        fi
     else
         exitcode=$?
-        bashio::log.error "vclient_pub run failed with exit code $exitcode."
+        if [[ "${exitcode}" == 124 || "${exitcode}" == 137 ]]; then
+            bashio::log.error "vclient read timed out after ${COMMAND_TIMEOUT}s; retrying on the next poll."
+        else
+            bashio::log.error "vclient read failed with exit code ${exitcode}; retrying on the next poll."
+        fi
     fi
-    bashio::log.info "Looping vclient_pub. Sleeping for $REFRESH_RATE seconds."
-    sleep "$REFRESH_RATE"
+    sleep "${REFRESH_RATE}"
 done

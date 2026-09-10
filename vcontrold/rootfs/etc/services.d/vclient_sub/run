@@ -4,15 +4,16 @@
 # s6-overlay docs: https://github.com/just-containers/s6-overlay
 # ==============================================================================
 
-# Fetch MQTT settings
-source /etc/services.d/get_mqtt_settings.sh
+declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
+source "${services_dir}/get_mqtt_settings.sh"
 
 # Fetch Vcontrold settings
-source /etc/services.d/get_vcontrold_settings.sh
+source "${services_dir}/get_vcontrold_settings.sh"
 
 declare command
 declare payload
 declare request
+declare response
 declare topic
 declare value
 
@@ -25,19 +26,24 @@ fi
 bashio::log.info "Starting MQTT subscription to topic: ${MQTT_TOPIC}/#"
 
 while true; do
-    mosquitto_sub -v -h "$MQTT_HOST" -p "$MQTT_PORT" "${MQTT_AUTH_ARGS[@]}" -t "${MQTT_TOPIC}/#" | while IFS= read -r payload; do
-        topic=${payload%% *}
-
-        if [[ "${payload}" == *" "* ]]; then
-            value=${payload#* }
-        else
-            value=""
-        fi
+    # Bashio enables errexit and pipefail. A failed connection must reach the retry.
+    # Never replay retained setter messages after reconnecting.
+    # JSON framing keeps embedded newlines inside a single message.
+    if mosquitto_sub -R -F '%j' -h "$MQTT_HOST" -p "$MQTT_PORT" "${MQTT_AUTH_ARGS[@]}" -t "${MQTT_TOPIC}/#" | while IFS= read -r payload; do
+        topic=$(jq -er '.topic | select(type == "string")' <<< "${payload}") || continue
 
         command=${topic#"$MQTT_TOPIC"/}
-        if [[ "${command}" == "${topic}" || "${command}" != set* ]]; then
+        if [[ "${command}" == "${topic}" || ! "${command}" =~ ^set[a-zA-Z0-9_]+$ ]]; then
             continue
         fi
+
+        # vclient interprets commas as command separators. Permit one setter only.
+        if ! jq -e '.payload | type == "string"' <<< "${payload}" >/dev/null \
+            || jq -e '.payload | explode | any(. < 32 or . == 44)' <<< "${payload}" >/dev/null; then
+            bashio::log.warning "Ignoring malformed setter payload for ${command}."
+            continue
+        fi
+        value=$(jq -r '.payload' <<< "${payload}") || continue
 
         bashio::log.info "Received command: [${command}] with value: ${value}"
 
@@ -47,13 +53,25 @@ while true; do
             request="${command}"
         fi
 
-        if vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" -o /dev/stdout -c "${request}"; then
+        # vclient 0.98.12 uses a 512-byte command buffer, including the terminator.
+        if (( $(LC_ALL=C printf '%s' "${request}" | wc -c) > 511 )); then
+            bashio::log.warning "Ignoring oversized setter request for ${command}."
+            continue
+        fi
+
+        if response=$(timeout --kill-after=5 "${COMMAND_TIMEOUT}" vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" -J -c "${request}") \
+            && jq -e 'type == "array" and length == 1 and .[0].error == ""' <<< "${response}" >/dev/null; then
             bashio::log.info "Command [${command}] executed successfully."
         else
             bashio::log.error "Failed to execute command [${command}] with value: ${value}"
         fi
-    done
+    done; then
+        bashio::log.info "MQTT subscription closed."
+    else
+        bashio::log.warning "MQTT subscription failed."
+    fi
 
     bashio::log.warning "MQTT subscription ended. Reconnecting in ${REFRESH_RATE} seconds."
     sleep "$REFRESH_RATE"
+    source "${services_dir}/get_mqtt_settings.sh"
 done

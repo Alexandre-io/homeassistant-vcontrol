@@ -5,6 +5,9 @@ configuration:
   refresh:
     name: "Refresh rate"
     description: "Aktualisierungrate / Wartezeit zwischen zwei Aufrufen des vclients."
+  command_timeout:
+    name: "Zeitlimit für Befehle"
+    description: "Maximale Dauer eines vcontrold-Lesezyklus oder Schreibbefehls in Sekunden (Standard: 120). MQTT-Veröffentlichungen haben ein separates Zeitlimit von 10 Sekunden."
   device_id:
     name: "Device ID"
     description: "Viessmann Gerätekennung (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"
