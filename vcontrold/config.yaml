@@ -1,6 +1,6 @@
 # https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
 name: Vcontrol add-on
-version: "1.13.4"
+version: "1.13.5"
 slug: vcontrold
 description: MQTT bridge for Viessmann vcontrold
 url: "https://github.com/Alexandre-io/homeassistant-vcontrol"
