@@ -4,7 +4,10 @@
 # s6-overlay docs: https://github.com/just-containers/s6-overlay
 # ==============================================================================
 
+# Fetch MQTT settings
 source /etc/services.d/get_mqtt_settings.sh
+
+# Fetch Vcontrold settings
 source /etc/services.d/get_vcontrold_settings.sh
 
 declare wait_logged=false
@@ -12,8 +15,8 @@ declare -r runtime_dir="/run/vcontrold"
 declare -r runtime_commands_file="${runtime_dir}/1_mqtt_commands.txt"
 declare -r runtime_template_file="${runtime_dir}/2_mqtt.tmpl"
 declare -r runtime_output_script="${runtime_dir}/3_mqtt_pub.sh"
-declare -r lock_file="/tmp/vcontrol.lock"
 
+# Ensure required variables are set
 if [[ -z "$MQTT_HOST" || -z "$MQTT_PORT" || -z "$REFRESH_RATE" || -z "$VCONTROL_HOST" || -z "$VCONTROL_PORT" ]]; then
     bashio::log.error "Missing essential environment variables. Check MQTT and Vcontrold settings."
     exit 1
@@ -24,18 +27,21 @@ until [[ -s "${runtime_commands_file}" && -s "${runtime_template_file}" ]]; do
         bashio::log.info "Waiting for generated vclient_pub runtime files."
         wait_logged=true
     fi
+
     sleep 1
 done
 
+# Run your program
 while true; do
     bashio::log.info "Executing vclient_pub command..."
-    if flock -w 120 "${lock_file}" vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" \
-               -f "${runtime_commands_file}" \
-               -t "${runtime_template_file}" \
-               -x "${runtime_output_script}"; then
+    if flock -w 120 /tmp/vcontrol.lock \
+        vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" \
+        -f "${runtime_commands_file}" \
+        -t "${runtime_template_file}" \
+        -x "${runtime_output_script}"; then
         bashio::log.info "vclient_pub executed successfully."
     else
-        bashio::log.error "vclient_pub run failed (exit code $?)."
+        bashio::log.error "vclient_pub run failed."
     fi
     bashio::log.info "Looping vclient_pub. Sleeping for $REFRESH_RATE seconds."
     sleep "$REFRESH_RATE"
