@@ -4,7 +4,7 @@ configuration:
     description: "The name of the tty used to communicate with the hardware."
   refresh:
     name: "Refresh rate"
-    description: "The waiting time between two executions."
+    description: "Default waiting time between polling cycles. Individual commands can override it with `command:TYPE:SECONDS`."
   command_timeout:
     name: "Command timeout"
     description: "Maximum duration of a vcontrold read cycle or setter, in seconds (default: 120). MQTT publications have a separate 10-second timeout."
@@ -37,4 +37,4 @@ configuration:
     description: "Output of debug messages"
   commands:
     name: "Commands"
-    description: "List of commands to send. Add one list item per entry, for example `getTempA:FLOAT` or `getError0:STRING`. `TYPE` must be `FLOAT` or `STRING`."
+    description: "List of commands to send. Use `command:TYPE` or optionally `command:TYPE:SECONDS` for a per-command polling interval. `TYPE` must be `FLOAT` or `STRING`."

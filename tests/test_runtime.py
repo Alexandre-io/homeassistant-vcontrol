@@ -229,13 +229,30 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.read_message(), "23.500000")
         self.assertIsNone(process.poll(), log.read_text())
 
+    def test_explicit_interval_repolls_without_waiting_for_global_refresh(self):
+        self.options["refresh"] = 30
+        self.options["commands"] = ["getTempA:FLOAT:1", "getError0:STRING:30"]
+        self.options["vcontrol_host"] = "boiler.test"
+        self.write_options()
+        result = self.run_script("vcontrold/run", env={"TAIL_BIN": "/bin/true"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        self.options["vcontrol_host"] = "127.0.0.1"
+        self.write_options()
+        self.start_broker()
+        process, log = self.start(["bashio", "/etc/services.d/vclient_pub/run"], "pub")
+        wait_for(lambda: self.boiler.commands.count("getTempA") >= 2, seconds=6)
+
+        self.assertIsNone(process.poll(), log.read_text())
+        self.assertEqual(self.boiler.commands.count("getError0"), 1)
+
     def test_invalid_first_poll_command_does_not_discard_valid_commands(self):
         self.options["commands"] = ["bad command:FLOAT", "getTempA:FLOAT"]
         self.options["vcontrol_host"] = "boiler.test"
         self.write_options()
         result = self.run_script("vcontrold/run", env={"TAIL_BIN": "/bin/true"})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(Path("/run/vcontrold/1_mqtt_commands.txt").read_text(), "getTempA\n")
+        self.assertEqual(Path("/run/vcontrold/poll_1.commands").read_text(), "getTempA\n")
 
 
 if __name__ == "__main__":

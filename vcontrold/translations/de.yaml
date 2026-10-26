@@ -4,7 +4,7 @@ configuration:
     description: "Name des seriellen Ports / TTY, um mit dem Gerät zu kommunizieren."
   refresh:
     name: "Refresh rate"
-    description: "Aktualisierungrate / Wartezeit zwischen zwei Aufrufen des vclients."
+    description: "Standard-Wartezeit zwischen Polling-Zyklen. Einzelne Befehle können sie mit `command:TYPE:SECONDS` überschreiben."
   command_timeout:
     name: "Zeitlimit für Befehle"
     description: "Maximale Dauer eines vcontrold-Lesezyklus oder Schreibbefehls in Sekunden (Standard: 120). MQTT-Veröffentlichungen haben ein separates Zeitlimit von 10 Sekunden."
@@ -37,4 +37,4 @@ configuration:
     description: "Ausgabe von Debug-Nachrichten"
   commands:
     name: "Commands"
-    description: "Liste der zu sendenden Befehle. Konfiguriere pro Listeneintrag einen Wert, z. B. `getTempA:FLOAT` oder `getError0:STRING`. `TYPE` muss `FLOAT` oder `STRING` sein."
+    description: "Liste der Befehle. Verwende `command:TYPE` oder optional `command:TYPE:SECONDS` für ein eigenes Polling-Intervall. `TYPE` muss `FLOAT` oder `STRING` sein."

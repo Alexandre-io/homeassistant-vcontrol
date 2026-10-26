@@ -47,7 +47,7 @@ chmod +x "${tmp_dir}/bin/mock-vcontrold"
     export BASHIO_CONFIG_tty="${TEST_TTY:-/dev/null}"
     export BASHIO_CONFIG_device_id="2098"
     export BASHIO_CONFIG_refresh="60"
-    export BASHIO_CONFIG_commands=$'getTempA:FLOAT\ngetError0:STRING\ngetTempWWsoll:FLOAT'
+    export BASHIO_CONFIG_commands=$'getTempA:FLOAT:5\ngetError0:STRING\ngetTempWWsoll:FLOAT:5'
     export BASHIO_CONFIG_mqtt_topic="openv"
     export BASHIO_CONFIG_mqtt_host="mqtt.local"
     export BASHIO_CONFIG_debug="false"
@@ -55,15 +55,23 @@ chmod +x "${tmp_dir}/bin/mock-vcontrold"
     source "${repo_root}/vcontrold/rootfs/etc/services.d/vcontrold/run" > "${tmp_dir}/run.log" 2>&1
 )
 
-assert_file_exists "${tmp_dir}/run/1_mqtt_commands.txt"
+assert_file_exists "${tmp_dir}/run/polling_groups.tsv"
+assert_file_exists "${tmp_dir}/run/poll_5.commands"
+assert_file_exists "${tmp_dir}/run/poll_60.commands"
 assert_eq \
-    $'getTempA\ngetError0\ngetTempWWsoll' \
-    "$(cat "${tmp_dir}/run/1_mqtt_commands.txt")" \
-    "generated runtime command list"
-assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '$C3'
-assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '$1'
-assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '$R2'
-assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '$3'
+    $'getTempA\ngetTempWWsoll' \
+    "$(cat "${tmp_dir}/run/poll_5.commands")" \
+    "generated five-second command group"
+assert_eq \
+    "getError0" \
+    "$(cat "${tmp_dir}/run/poll_60.commands")" \
+    "generated default command group"
+assert_file_contains "${tmp_dir}/run/poll_5.tmpl" '$C2'
+assert_file_contains "${tmp_dir}/run/poll_5.tmpl" '$1'
+assert_file_contains "${tmp_dir}/run/poll_5.tmpl" '$2'
+assert_file_contains "${tmp_dir}/run/poll_60.tmpl" '$R1'
+assert_file_contains "${tmp_dir}/run/polling_groups.tsv" $'5\t'
+assert_file_contains "${tmp_dir}/run/polling_groups.tsv" $'60\t'
 assert_file_contains "${tmp_dir}/run/vcontrold.xml" 'device="2098"'
 assert_file_contains "${tmp_dir}/run/vcontrold.xml" "href=\"${tmp_dir}/etc/vcontrold/vito.xml\""
 assert_file_contains "${tmp_dir}/capture/vcontrold-args.txt" "${tmp_dir}/run/vcontrold.xml"

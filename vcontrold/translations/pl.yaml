@@ -4,7 +4,7 @@ configuration:
     description: "Ścieżka urządzenia (portu TTY), który będzie się komunikował z hardware."
   refresh:
     name: "Odświeżanie"
-    description: "Czas oczekiwania pomiędzy uruchomieniami."
+    description: "Domyslny czas pomiedzy cyklami odpytywania. Poszczegolne polecenia moga go nadpisac przez `command:TYPE:SECONDS`."
   command_timeout:
     name: "Limit czasu poleceń"
     description: "Maksymalny czas cyklu odczytu vcontrold lub polecenia zapisu w sekundach (domyślnie: 120). Publikacja MQTT ma osobny limit 10 sekund."
@@ -37,4 +37,4 @@ configuration:
     description: "Wyjście dla debugowania"
   commands:
     name: "Komendy"
-    description: "Lista komend do wyslania. Skonfiguruj jedna komende na element listy, np. `getTempA:FLOAT` lub `getError0:STRING`. `TYPE` musi byc `FLOAT` lub `STRING`."
+    description: "Lista polecen. Uzyj `command:TYPE` lub opcjonalnie `command:TYPE:SECONDS`, aby ustawic osobny interwal odpytywania. `TYPE` musi byc `FLOAT` lub `STRING`."

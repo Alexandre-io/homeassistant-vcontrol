@@ -1,33 +1,31 @@
 #!/usr/bin/with-contenv bashio
-# Poll vcontrold and publish data without executing its output as shell code.
+# Poll vcontrold at independent command-group intervals and publish MQTT states.
 
 declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
 declare -r runtime_dir="${RUNTIME_DIR:-/run/vcontrold}"
-declare -r runtime_commands_file="${runtime_dir}/1_mqtt_commands.txt"
-declare -r runtime_template_file="${runtime_dir}/2_mqtt.tmpl"
-declare -r runtime_output_file="${runtime_dir}/values.txt"
+declare -r runtime_groups_file="${runtime_dir}/polling_groups.tsv"
 declare -r separator=$'\037'
-declare record command status value exitcode published failed expected
+declare -A next_due=()
+declare polled
 
 source "${services_dir}/get_vcontrold_settings.sh"
 source "${services_dir}/get_mqtt_settings.sh"
 umask 077
 
-while true; do
-    until [[ -f "${runtime_dir}/ready" && -s "${runtime_commands_file}" && -s "${runtime_template_file}" ]]; do
-        bashio::log.info "Waiting for complete vcontrold runtime files."
-        sleep 2
-    done
+poll_group() {
+    local interval=$1
+    local commands_file=$2
+    local template_file=$3
+    local output_file="${runtime_dir}/values_${interval}.txt"
+    local record command status value exitcode published failed expected
 
-    # vclient -x incorrectly returns system()'s wait status as an exit code.
-    # Read into a data file and check each MQTT publication ourselves instead.
-    rm -f "${runtime_output_file}"
+    rm -f "${output_file}"
     if timeout --kill-after=5 "${COMMAND_TIMEOUT}" \
-        vclient -h "${VCONTROL_HOST}" -p "${VCONTROL_PORT}" -f "${runtime_commands_file}" \
-        -t "${runtime_template_file}" -o "${runtime_output_file}"; then
+        vclient -h "${VCONTROL_HOST}" -p "${VCONTROL_PORT}" -f "${commands_file}" \
+        -t "${template_file}" -o "${output_file}"; then
         published=0
         failed=0
-        expected=$(wc -l < "${runtime_commands_file}")
+        expected=$(wc -l < "${commands_file}")
         while IFS= read -r -d $'\036' record; do
             record=${record#$'\n'}
             command=${record%%"${separator}"*}
@@ -53,19 +51,58 @@ while true; do
                 source "${services_dir}/get_mqtt_settings.sh"
                 break
             fi
-        done < "${runtime_output_file}"
+        done < "${output_file}"
+
         if (( failed == 0 && published == expected && published > 0 )); then
-            bashio::log.info "Published ${published} values to MQTT."
+            bashio::log.info "Published ${published} values to MQTT for ${interval}s polling group."
         else
-            bashio::log.warning "Incomplete poll: published ${published}/${expected} values."
+            bashio::log.warning "Incomplete ${interval}s poll: published ${published}/${expected} values."
         fi
     else
         exitcode=$?
         if [[ "${exitcode}" == 124 || "${exitcode}" == 137 ]]; then
-            bashio::log.error "vclient read timed out after ${COMMAND_TIMEOUT}s; retrying on the next poll."
+            bashio::log.error "vclient ${interval}s polling group timed out after ${COMMAND_TIMEOUT}s."
         else
-            bashio::log.error "vclient read failed with exit code ${exitcode}; retrying on the next poll."
+            bashio::log.error "vclient ${interval}s polling group failed with exit code ${exitcode}."
         fi
     fi
-    sleep "${REFRESH_RATE}"
+}
+
+while true; do
+    until [[ -f "${runtime_dir}/ready" && -s "${runtime_groups_file}" ]]; do
+        bashio::log.info "Waiting for complete vcontrold polling configuration."
+        sleep 2
+    done
+
+    soonest=$(( $(date +%s) + 86400 ))
+    polled=0
+    while IFS=$'\t' read -r interval commands_file template_file; do
+        if [[ ! "${interval}" =~ ^[1-9][0-9]{0,4}$ || ! -s "${commands_file}" || ! -s "${template_file}" ]]; then
+            bashio::log.warning "Ignoring invalid polling group definition."
+            continue
+        fi
+
+        now=$(date +%s)
+        due=${next_due["${interval}"]:-0}
+        if (( now >= due )); then
+            poll_group "${interval}" "${commands_file}" "${template_file}"
+            next_due["${interval}"]=$(( $(date +%s) + interval ))
+            polled=1
+            # Groups are ordered from fastest to slowest. Re-scan after each
+            # completed poll so a fast group that became due while a slower
+            # group was running gets priority.
+            break
+        fi
+
+        (( due < soonest )) && soonest=${due}
+    done < "${runtime_groups_file}"
+
+    if (( polled == 1 )); then
+        continue
+    fi
+
+    now=$(date +%s)
+    delay=$(( soonest - now ))
+    (( delay >= 1 )) || delay=1
+    sleep "${delay}"
 done
