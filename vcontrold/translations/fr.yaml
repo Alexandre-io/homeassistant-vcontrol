@@ -4,7 +4,7 @@ configuration:
     description: "Nom du port USB utilisé pour communiquer avec la chaudière."
   refresh:
     name: "Refresh rate"
-    description: "Le temps d'attente entre deux exécutions."
+    description: "Délai par défaut entre deux cycles de lecture. Une commande peut le remplacer avec `command:TYPE:SECONDS`."
   command_timeout:
     name: "Délai limite des commandes"
     description: "Durée maximale d’un cycle de lecture vcontrold ou d’une écriture, en secondes (défaut : 120). Chaque publication MQTT dispose de 10 secondes."
@@ -37,4 +37,4 @@ configuration:
     description: "Sortie des messages de débogage"
   commands:
     name: "Commands"
-    description: "Liste des commandes a envoyer. Configurez une entree par element de liste, par exemple `getTempA:FLOAT` ou `getError0:STRING`. `TYPE` doit etre `FLOAT` ou `STRING`."
+    description: "Liste des commandes à envoyer. Utilisez `command:TYPE` ou `command:TYPE:SECONDS` pour définir un intervalle propre à une commande. `TYPE` doit être `FLOAT` ou `STRING`."

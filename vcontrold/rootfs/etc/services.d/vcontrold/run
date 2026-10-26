@@ -5,17 +5,12 @@
 # ==============================================================================
 
 # Declare variables
-declare cmd
-declare command_entry
 declare config_commands_raw
 declare config_deviceid
 declare config_file_vcontrold
 declare config_file_vcontrold_source
 declare config_file_vito
 declare config_tty
-declare type
-declare value_placeholder
-declare -a commands_array=()
 declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
 declare -r addon_config_dir="${ADDON_CONFIG_DIR:-/config}"
 declare -r legacy_config_dir="${LEGACY_CONFIG_DIR:-/homeassistant/vcontrold}"
@@ -23,8 +18,6 @@ declare -r vcontrold_config_dir="${VCONTROLD_CONFIG_DIR:-/etc/vcontrold}"
 declare -r default_vito_config="${vcontrold_config_dir}/vito.xml"
 declare -r default_vcontrold_config="${vcontrold_config_dir}/vcontrold.xml"
 declare -r runtime_dir="${RUNTIME_DIR:-/run/vcontrold}"
-declare -r runtime_commands_file="${runtime_dir}/1_mqtt_commands.txt"
-declare -r runtime_template_file="${runtime_dir}/2_mqtt.tmpl"
 declare -r runtime_vcontrold_config="${runtime_dir}/vcontrold.xml"
 declare -r tail_bin="${TAIL_BIN:-tail}"
 declare -r vcontrold_bin="${VCONTROLD_BIN:-/usr/sbin/vcontrold}"
@@ -42,6 +35,7 @@ is_local_vcontrold() {
 
 # Preparing the daemon must not depend on the MQTT broker being available.
 source "${services_dir}/command_utils.sh"
+source "${services_dir}/polling_utils.sh"
 
 # Fetch Vcontrold settings
 source "${services_dir}/get_vcontrold_settings.sh"
@@ -77,50 +71,13 @@ fi
 
 config_file_vcontrold="${runtime_vcontrold_config}"
 
-# Prepare runtime files
+# Prepare runtime polling groups. Legacy command:TYPE entries use the global
+# refresh value; command:TYPE:SECONDS entries override it. Commands sharing an
+# interval are batched into one vclient request.
 mkdir -p "${runtime_dir}"
 umask 077
 rm -f "${runtime_dir}/ready"
-: > "${runtime_commands_file}.tmp"
-: > "${runtime_template_file}.tmp"
-
-# Configure scripts based on commands
-load_vcontrold_commands_array "${config_commands_raw}" commands_array
-i=0
-for command_entry in "${commands_array[@]}"
-do
-    [[ -n "${command_entry}" ]] || continue
-
-    if [[ "${command_entry}" != *:* ]]; then
-        bashio::log.warning "Skipping invalid command entry: ${command_entry}"
-        continue
-    fi
-
-    ((i=i+1))
-    cmd=${command_entry%%:*}
-    type=${command_entry#*:}
-
-    if [[ ! "${cmd}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ || ! "${type}" =~ ^(FLOAT|STRING)$ ]]; then
-        bashio::log.warning "Skipping invalid command entry at position ${i}: ${command_entry}"
-        i=$((i-1))
-        continue
-    fi
-
-    bashio::log.info "Configuring command ${i}: ${cmd} with type ${type}"
-    printf '%s\n' "${cmd}" >> "${runtime_commands_file}.tmp"
-
-    value_placeholder="\$${i}"
-    if [[ "${type}" == "STRING" ]]; then
-        value_placeholder="\$R${i}"
-    fi
-
-    # Text records, never executable shell. US separates fields; RS ends a record.
-    # These control characters preserve spaces, quotes and multiline STRING values.
-    # shellcheck disable=SC2016 # vclient expands these placeholders later.
-    printf '$C%d\037$E%d\037%s\036\n' "${i}" "${i}" "${value_placeholder}" >> "${runtime_template_file}.tmp"
-done
-
-if [[ ! -s "${runtime_commands_file}.tmp" ]]; then
+if ! prepare_polling_groups "${config_commands_raw}" "${REFRESH_RATE}" "${runtime_dir}"; then
     bashio::exit.nok "No valid commands configured."
 fi
 
@@ -146,11 +103,9 @@ sed -i "s|href=\"vcontrold/vito.xml\"|href=\"${config_file_vito}\"|g" "${config_
 sed -i "s|href=\"vito.xml\"|href=\"${config_file_vito}\"|g" "${config_file_vcontrold}"
 
 # Start the vcontrold service or a dummy process for external control
-mv "${runtime_commands_file}.tmp" "${runtime_commands_file}"
-mv "${runtime_template_file}.tmp" "${runtime_template_file}"
 # A successful publication updates the heartbeat even for partially supported devices.
-# Allow three complete retry intervals and at least five minutes without data.
-health_max_age=$((3 * (REFRESH_RATE + COMMAND_TIMEOUT + 15)))
+# Allow three complete intervals of the slowest group and at least five minutes without data.
+health_max_age=$((3 * (POLLING_MAX_REFRESH + COMMAND_TIMEOUT + 15)))
 (( health_max_age >= 300 )) || health_max_age=300
 printf '%s\n' "${health_max_age}" > "${runtime_dir}/health_max_age.tmp"
 mv "${runtime_dir}/health_max_age.tmp" "${runtime_dir}/health_max_age"
