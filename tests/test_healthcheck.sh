@@ -18,6 +18,9 @@ if bash "${repo_root}/vcontrold/rootfs/etc/services.d/healthcheck.sh"; then
 fi
 touch "${tmp_dir}/started"
 bash "${repo_root}/vcontrold/rootfs/etc/services.d/healthcheck.sh" || fail "first poll should get its startup budget"
+mkdir -p "${tmp_dir}/poll_groups/3600"
+echo 300 > "${tmp_dir}/poll_groups/3600/health_max_age"
+bash "${repo_root}/vcontrold/rootfs/etc/services.d/healthcheck.sh" || fail "poll group should receive its startup budget"
 touch -d '10 minutes ago' "${tmp_dir}/started"
 if bash "${repo_root}/vcontrold/rootfs/etc/services.d/healthcheck.sh"; then
     fail "startup grace must expire without a first publication"

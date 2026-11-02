@@ -3,8 +3,8 @@ configuration:
     name: "TTY"
     description: "Nom du port USB utilisé pour communiquer avec la chaudière."
   refresh:
-    name: "Refresh rate"
-    description: "Le temps d'attente entre deux exécutions."
+    name: "Intervalle par défaut"
+    description: "Intervalle de lecture par défaut en secondes pour les commandes sans intervalle individuel."
   command_timeout:
     name: "Délai limite des commandes"
     description: "Durée maximale d’un cycle de lecture vcontrold ou d’une écriture, en secondes (défaut : 120). Chaque publication MQTT dispose de 10 secondes."
@@ -37,4 +37,4 @@ configuration:
     description: "Sortie des messages de débogage"
   commands:
     name: "Commands"
-    description: "Liste des commandes a envoyer. Configurez une entree par element de liste, par exemple `getTempA:FLOAT` ou `getError0:STRING`. `TYPE` doit etre `FLOAT` ou `STRING`."
+    description: "Une commande par entrée, par ex. `getTempA:FLOAT`, ou avec un intervalle individuel `getTempA:FLOAT:30`. TYPE doit être FLOAT ou STRING ; intervalle de 1 à 86400 secondes."

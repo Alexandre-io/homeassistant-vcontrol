@@ -3,8 +3,8 @@ configuration:
     name: "TTY"
     description: "The name of the tty used to communicate with the hardware."
   refresh:
-    name: "Refresh rate"
-    description: "The waiting time between two executions."
+    name: "Default interval"
+    description: "Default polling interval in seconds for commands without an individual interval."
   command_timeout:
     name: "Command timeout"
     description: "Maximum duration of a vcontrold read cycle or setter, in seconds (default: 120). MQTT publications have a separate 10-second timeout."
@@ -37,4 +37,4 @@ configuration:
     description: "Output of debug messages"
   commands:
     name: "Commands"
-    description: "List of commands to send. Add one list item per entry, for example `getTempA:FLOAT` or `getError0:STRING`. `TYPE` must be `FLOAT` or `STRING`."
+    description: "One command per entry, e.g. `getTempA:FLOAT`, or with an individual polling interval `getTempA:FLOAT:30`. TYPE must be FLOAT or STRING; interval is 1–86400 seconds."

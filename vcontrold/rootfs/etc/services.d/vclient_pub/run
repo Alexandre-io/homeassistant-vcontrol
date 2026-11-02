@@ -1,71 +1,99 @@
 #!/usr/bin/with-contenv bashio
-# Poll vcontrold and publish data without executing its output as shell code.
+# Poll due command groups serially and publish their values to retained MQTT topics.
 
 declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
 declare -r runtime_dir="${RUNTIME_DIR:-/run/vcontrold}"
-declare -r runtime_commands_file="${runtime_dir}/1_mqtt_commands.txt"
-declare -r runtime_template_file="${runtime_dir}/2_mqtt.tmpl"
+declare -r groups_dir="${runtime_dir}/poll_groups"
 declare -r runtime_output_file="${runtime_dir}/values.txt"
 declare -r separator=$'\037'
-declare record command status value exitcode published failed expected
+declare interval group_dir commands_file template_file expected record command status value exitcode published failed now
+declare -A next_due=()
 
 source "${services_dir}/get_vcontrold_settings.sh"
 source "${services_dir}/get_mqtt_settings.sh"
 umask 077
 
-while true; do
-    until [[ -f "${runtime_dir}/ready" && -s "${runtime_commands_file}" && -s "${runtime_template_file}" ]]; do
-        bashio::log.info "Waiting for complete vcontrold runtime files."
-        sleep 2
-    done
+publish_group() {
+    local group_interval=$1
+    local group_path=$2
+    local group_commands_file="${group_path}/commands.txt"
+    local group_template_file="${group_path}/template.tmpl"
+    local local_expected local_published local_failed local_record local_command local_status local_value local_exitcode
+    local local_poll_success=0
 
-    # vclient -x incorrectly returns system()'s wait status as an exit code.
-    # Read into a data file and check each MQTT publication ourselves instead.
     rm -f "${runtime_output_file}"
     if timeout --kill-after=5 "${COMMAND_TIMEOUT}" \
-        vclient -h "${VCONTROL_HOST}" -p "${VCONTROL_PORT}" -f "${runtime_commands_file}" \
-        -t "${runtime_template_file}" -o "${runtime_output_file}"; then
-        published=0
-        failed=0
-        expected=$(wc -l < "${runtime_commands_file}")
-        while IFS= read -r -d $'\036' record; do
-            record=${record#$'\n'}
-            command=${record%%"${separator}"*}
-            record=${record#*"${separator}"}
-            status=${record%%"${separator}"*}
-            value=${record#*"${separator}"}
+        vclient -h "${VCONTROL_HOST}" -p "${VCONTROL_PORT}" -f "${group_commands_file}" \
+        -t "${group_template_file}" -o "${runtime_output_file}"; then
+        local_published=0
+        local_failed=0
+        local_expected=$(wc -l < "${group_commands_file}")
+        while IFS= read -r -d $'\036' local_record; do
+            local_record=${local_record#$'\n'}
+            local_command=${local_record%%"${separator}"*}
+            local_record=${local_record#*"${separator}"}
+            local_status=${local_record%%"${separator}"*}
+            local_value=${local_record#*"${separator}"}
 
-            if [[ ! "${command}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ || "${status}" != OK || "${value}" == *"${separator}"* ]]; then
-                bashio::log.warning "Invalid or failed vcontrold response for ${command}: ${status}"
-                failed=1
+            if [[ ! "${local_command}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ || "${local_status}" != OK || "${local_value}" == *"${separator}"* ]]; then
+                bashio::log.warning "Invalid or failed vcontrold response for ${local_command}: ${local_status}"
+                local_failed=1
                 continue
             fi
 
-            # QoS 1 confirms broker receipt. Retained states survive Core restarts.
             if timeout --kill-after=5 10 mosquitto_pub -h "${MQTT_HOST}" -p "${MQTT_PORT}" \
-                "${MQTT_AUTH_ARGS[@]}" -q 1 -r -t "${MQTT_TOPIC}/${command}" -m "${value}"; then
-                ((published+=1))
+                "${MQTT_AUTH_ARGS[@]}" -q 1 -r -t "${MQTT_TOPIC}/${local_command}" -m "${local_value}"; then
+                ((local_published+=1))
                 touch "${runtime_dir}/last_success"
             else
-                bashio::log.error "MQTT publication failed for ${command}; retrying on the next poll."
-                failed=1
-                # Refresh Supervisor credentials, which may have changed on restart.
+                bashio::log.error "MQTT publication failed for ${local_command}; retrying on the next poll."
+                local_failed=1
                 source "${services_dir}/get_mqtt_settings.sh"
                 break
             fi
         done < "${runtime_output_file}"
-        if (( failed == 0 && published == expected && published > 0 )); then
-            bashio::log.info "Published ${published} values to MQTT."
+        if (( local_failed == 0 && local_published == local_expected && local_published > 0 )); then
+            bashio::log.info "Published ${local_published} values to MQTT (interval ${group_interval}s)."
+            touch "${group_path}/last_success"
+            local_poll_success=1
         else
-            bashio::log.warning "Incomplete poll: published ${published}/${expected} values."
+            bashio::log.warning "Incomplete poll at ${group_interval}s: published ${local_published}/${local_expected} values."
         fi
     else
-        exitcode=$?
-        if [[ "${exitcode}" == 124 || "${exitcode}" == 137 ]]; then
-            bashio::log.error "vclient read timed out after ${COMMAND_TIMEOUT}s; retrying on the next poll."
+        local_exitcode=$?
+        if [[ "${local_exitcode}" == 124 || "${local_exitcode}" == 137 ]]; then
+            bashio::log.error "vclient read timed out after ${COMMAND_TIMEOUT}s for ${group_interval}s group; retrying when due."
         else
-            bashio::log.error "vclient read failed with exit code ${exitcode}; retrying on the next poll."
+            bashio::log.error "vclient read failed with exit code ${local_exitcode} for ${group_interval}s group; retrying when due."
         fi
     fi
-    sleep "${REFRESH_RATE}"
+
+    (( local_poll_success == 1 ))
+}
+
+while true; do
+    until [[ -f "${runtime_dir}/ready" && -d "${groups_dir}" \
+        && -n "$(find "${groups_dir}" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]]; do
+        bashio::log.info "Waiting for complete vcontrold runtime files."
+        sleep 2
+    done
+
+    now=$(date +%s)
+    while IFS= read -r group_dir; do
+        [[ -n "${group_dir}" ]] || continue
+        interval=${group_dir##*/}
+        commands_file="${group_dir}/commands.txt"
+        template_file="${group_dir}/template.tmpl"
+        [[ "${interval}" =~ ^[1-9][0-9]{0,4}$ && -s "${commands_file}" && -s "${template_file}" ]] || continue
+        if [[ -z "${next_due[${interval}]:-}" ]] || (( now >= next_due[${interval}] )); then
+            if publish_group "${interval}" "${group_dir}"; then
+                next_due[${interval}]=$(( $(date +%s) + interval ))
+            else
+                # Retry failed groups on the default cadence rather than waiting
+                # up to an hour for the next scheduled poll.
+                next_due[${interval}]=$(( $(date +%s) + REFRESH_RATE ))
+            fi
+        fi
+    done < <(find "${groups_dir}" -mindepth 1 -maxdepth 1 -type d -printf '%f\t%p\n' | sort -n -k1,1 | cut -f2-)
+    sleep 1
 done

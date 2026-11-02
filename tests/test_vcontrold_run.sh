@@ -47,7 +47,7 @@ chmod +x "${tmp_dir}/bin/mock-vcontrold"
     export BASHIO_CONFIG_tty="${TEST_TTY:-/dev/null}"
     export BASHIO_CONFIG_device_id="2098"
     export BASHIO_CONFIG_refresh="60"
-    export BASHIO_CONFIG_commands=$'getTempA:FLOAT\ngetError0:STRING\ngetTempWWsoll:FLOAT'
+    export BASHIO_CONFIG_commands=$'getTempA:FLOAT:30\ngetError0:STRING:3600\ngetTempWWsoll:FLOAT'
     export BASHIO_CONFIG_mqtt_topic="openv"
     export BASHIO_CONFIG_mqtt_host="mqtt.local"
     export BASHIO_CONFIG_debug="false"
@@ -64,6 +64,13 @@ assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '$C3'
 assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '$1'
 assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '$R2'
 assert_file_contains "${tmp_dir}/run/2_mqtt.tmpl" '$3'
+assert_eq $'getTempA' "$(cat "${tmp_dir}/run/poll_groups/30/commands.txt")" "fast poll group"
+assert_file_contains "${tmp_dir}/run/poll_groups/30/template.tmpl" '$1'
+assert_eq "495" "$(cat "${tmp_dir}/run/poll_groups/30/health_max_age")" "per-group health budget"
+assert_eq $'getError0' "$(cat "${tmp_dir}/run/poll_groups/3600/commands.txt")" "hourly poll group"
+assert_file_contains "${tmp_dir}/run/poll_groups/3600/template.tmpl" '$R1'
+assert_eq $'getTempWWsoll' "$(cat "${tmp_dir}/run/poll_groups/60/commands.txt")" "default refresh poll group"
+assert_eq "11205" "$(cat "${tmp_dir}/run/health_max_age")" "health budget for hourly poll group"
 assert_file_contains "${tmp_dir}/run/vcontrold.xml" 'device="2098"'
 assert_file_contains "${tmp_dir}/run/vcontrold.xml" "href=\"${tmp_dir}/etc/vcontrold/vito.xml\""
 assert_file_contains "${tmp_dir}/capture/vcontrold-args.txt" "${tmp_dir}/run/vcontrold.xml"
