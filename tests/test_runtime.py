@@ -149,6 +149,13 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.read_message(), "21.500000")
 
     def test_stalled_read_times_out_and_next_poll_recovers(self):
+        self.options["commands"] = ["getTempA:FLOAT:3600"]
+        setup_options = dict(self.options, vcontrol_host="boiler.test")
+        Path("/data/options.json").write_text(json.dumps(setup_options))
+        (self.cache / "addons.self.options.config.cache").write_text(json.dumps(setup_options))
+        result = self.run_script("vcontrold/run", env={"TAIL_BIN": "/bin/true"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.write_options()
         self.start_broker()
         self.boiler.stalled = True
         process, log = self.start(["bashio", "/etc/services.d/vclient_pub/run"], "pub")

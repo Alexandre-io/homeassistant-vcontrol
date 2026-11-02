@@ -3,8 +3,8 @@ configuration:
     name: "TTY"
     description: "Name des seriellen Ports / TTY, um mit dem Gerät zu kommunizieren."
   refresh:
-    name: "Refresh rate"
-    description: "Aktualisierungrate / Wartezeit zwischen zwei Aufrufen des vclients."
+    name: "Standard-Intervall"
+    description: "Standard-Pollintervall in Sekunden für Befehle ohne eigenes Intervall."
   command_timeout:
     name: "Zeitlimit für Befehle"
     description: "Maximale Dauer eines vcontrold-Lesezyklus oder Schreibbefehls in Sekunden (Standard: 120). MQTT-Veröffentlichungen haben ein separates Zeitlimit von 10 Sekunden."
@@ -37,4 +37,4 @@ configuration:
     description: "Ausgabe von Debug-Nachrichten"
   commands:
     name: "Commands"
-    description: "Liste der zu sendenden Befehle. Konfiguriere pro Listeneintrag einen Wert, z. B. `getTempA:FLOAT` oder `getError0:STRING`. `TYPE` muss `FLOAT` oder `STRING` sein."
+    description: "Ein Befehl pro Eintrag: `getTempA:FLOAT` oder mit eigenem Pollintervall `getTempA:FLOAT:30`. Typ muss FLOAT oder STRING sein, Intervall 1–86400 Sekunden."

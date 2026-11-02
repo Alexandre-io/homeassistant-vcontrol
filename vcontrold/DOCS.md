@@ -18,15 +18,15 @@ In the configuration section, you have 2 choices to connect to your **Vitodens**
 1. For a locally connected **Optolink** cable, set the USB/TTY device. The add-on will pass through that USB port and run **vcontrold** locally inside Docker.
 2. For a remotely running **vcontrold** (e.g. RPi connected to your **Vitodens** device), select its hostname and port (_Vcontrold host/port_). These settings are by default set to localhost:3002.
 
-Select a _refresh rate_ that defines the interval used for polling your device and the _device id_ (typically also seen in the device identifier string) which is used to select the correct mapping for the commands that are executed.
+Select a _refresh rate_ that provides the default polling interval and the _device id_ (typically also seen in the device identifier string) which is used to select the correct mapping for the commands that are executed.
  
 
 The commands section can be edited and extended in YAML mode, e.g.
 ```yaml
 commands:
-  - getTempA:FLOAT
-  - getTempWWist:FLOAT
-  - getTempWWsoll:FLOAT
+  - getTempA:FLOAT:30
+  - getTempWWist:FLOAT:30
+  - getTempWWsoll:FLOAT:300
   - getTempKist:FLOAT
   - getTempKsoll:FLOAT
   - getTempVListM1:FLOAT
@@ -139,7 +139,15 @@ original XML files are never rewritten.
   **Settings → System → Hardware**. `/dev/ttyUSB0` can identify a different adapter
   after a host reboot. The extension waits for a missing local serial device and
   retries daemon failures. Network serial endpoints (`host:port`) remain supported.
-- `refresh` is the delay between completed read cycles (1–86400 seconds).
+- Each command can optionally specify its own polling interval in seconds, for example
+  `getTempA:FLOAT:30` or `getError0:STRING:3600`. Entries without an interval
+  continue to use `refresh`. Valid intervals are 1–86400 seconds.
+- The add-on runs due command groups sequentially through one `vclient` publisher;
+  it does not start overlapping read cycles. A command group may run later than its
+  configured interval if a previous vcontrold read is still in progress. A failed
+  group is retried after the default `refresh` interval; the healthcheck tracks each
+  group's last successful poll independently.
+- `refresh` is the default interval for commands that do not specify one (1–86400 seconds).
   `command_timeout` limits a whole vcontrold read cycle or one setter (1–3600 seconds,
   default 120). Increase it if a large command list or slow device needs more time.
   MQTT publications have a separate 10-second timeout, followed by forced termination
@@ -158,7 +166,7 @@ original XML files are never rewritten.
   Existing user choices are preserved by an update. The Docker healthcheck tracks
   actual MQTT publications, not merely a running process or open TCP port. With the
   watchdog enabled, Supervisor can restart an unhealthy container.
-- The health budget is `max(300, 3 × (refresh + command_timeout + 15))` seconds since
+- The health budget is `max(300, 3 × (largest command interval + command_timeout + 15))` seconds since
   the last successful MQTT publication, or since initial startup before the first
   publication. Docker checks every 30 seconds with three consecutive failures and
   a five-minute initial grace period. At least one published value establishes

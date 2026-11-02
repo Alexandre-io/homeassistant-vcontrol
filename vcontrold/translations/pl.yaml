@@ -3,8 +3,8 @@ configuration:
     name: "Port (TTY)"
     description: "Ścieżka urządzenia (portu TTY), który będzie się komunikował z hardware."
   refresh:
-    name: "Odświeżanie"
-    description: "Czas oczekiwania pomiędzy uruchomieniami."
+    name: "Domyślny interwał"
+    description: "Domyślny interwał odczytu w sekundach dla poleceń bez własnego interwału."
   command_timeout:
     name: "Limit czasu poleceń"
     description: "Maksymalny czas cyklu odczytu vcontrold lub polecenia zapisu w sekundach (domyślnie: 120). Publikacja MQTT ma osobny limit 10 sekund."

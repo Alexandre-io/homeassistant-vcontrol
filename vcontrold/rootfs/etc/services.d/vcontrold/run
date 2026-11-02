@@ -15,7 +15,14 @@ declare config_file_vito
 declare config_tty
 declare type
 declare value_placeholder
+declare interval
+declare group_dir
+declare group_index
+declare group_template
+declare group_commands
+declare global_placeholder
 declare -a commands_array=()
+declare -A group_counts=()
 declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
 declare -r addon_config_dir="${ADDON_CONFIG_DIR:-/config}"
 declare -r legacy_config_dir="${LEGACY_CONFIG_DIR:-/homeassistant/vcontrold}"
@@ -81,6 +88,8 @@ config_file_vcontrold="${runtime_vcontrold_config}"
 mkdir -p "${runtime_dir}"
 umask 077
 rm -f "${runtime_dir}/ready"
+rm -rf "${runtime_dir}/poll_groups"
+mkdir -p "${runtime_dir}/poll_groups"
 : > "${runtime_commands_file}.tmp"
 : > "${runtime_template_file}.tmp"
 
@@ -98,9 +107,13 @@ do
 
     ((i=i+1))
     cmd=${command_entry%%:*}
-    type=${command_entry#*:}
+    command_entry=${command_entry#*:}
+    type=${command_entry%%:*}
+    interval=${command_entry#*:}
+    [[ "${command_entry}" == *:* ]] || interval=${REFRESH_RATE}
 
-    if [[ ! "${cmd}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ || ! "${type}" =~ ^(FLOAT|STRING)$ ]]; then
+    if [[ ! "${cmd}" =~ ^[a-zA-Z][a-zA-Z0-9_]*$ || ! "${type}" =~ ^(FLOAT|STRING)$ \
+        || ! "${interval}" =~ ^[1-9][0-9]{0,5}$ ]] || (( interval > 86400 )); then
         bashio::log.warning "Skipping invalid command entry at position ${i}: ${command_entry}"
         i=$((i-1))
         continue
@@ -109,15 +122,31 @@ do
     bashio::log.info "Configuring command ${i}: ${cmd} with type ${type}"
     printf '%s\n' "${cmd}" >> "${runtime_commands_file}.tmp"
 
-    value_placeholder="\$${i}"
+    group_dir="${runtime_dir}/poll_groups/${interval}"
+    mkdir -p "${group_dir}"
+    group_index=${group_counts[${interval}]:-0}
+    ((group_index+=1))
+    group_counts[${interval}]=${group_index}
+    group_commands="${group_dir}/commands.txt"
+    group_template="${group_dir}/template.tmpl"
+    printf '%s\n' "${cmd}" >> "${group_commands}.tmp"
+    group_health_max_age=$((3 * (interval + COMMAND_TIMEOUT + 15)))
+    (( group_health_max_age >= 300 )) || group_health_max_age=300
+    printf '%s\n' "${group_health_max_age}" > "${group_dir}/health_max_age"
+
+    value_placeholder="\$${group_index}"
+    global_placeholder="\$${i}"
     if [[ "${type}" == "STRING" ]]; then
-        value_placeholder="\$R${i}"
+        value_placeholder="\$R${group_index}"
+        global_placeholder="\$R${i}"
     fi
 
     # Text records, never executable shell. US separates fields; RS ends a record.
     # These control characters preserve spaces, quotes and multiline STRING values.
     # shellcheck disable=SC2016 # vclient expands these placeholders later.
-    printf '$C%d\037$E%d\037%s\036\n' "${i}" "${i}" "${value_placeholder}" >> "${runtime_template_file}.tmp"
+    printf '$C%d\037$E%d\037%s\036\n' "${group_index}" "${group_index}" "${value_placeholder}" >> "${group_template}.tmp"
+    # shellcheck disable=SC2016 # vclient expands these placeholders later.
+    printf '$C%d\037$E%d\037%s\036\n' "${i}" "${i}" "${global_placeholder}" >> "${runtime_template_file}.tmp"
 done
 
 if [[ ! -s "${runtime_commands_file}.tmp" ]]; then
@@ -148,9 +177,16 @@ sed -i "s|href=\"vito.xml\"|href=\"${config_file_vito}\"|g" "${config_file_vcont
 # Start the vcontrold service or a dummy process for external control
 mv "${runtime_commands_file}.tmp" "${runtime_commands_file}"
 mv "${runtime_template_file}.tmp" "${runtime_template_file}"
+max_poll_interval=${REFRESH_RATE}
+for interval in "${!group_counts[@]}"; do
+    (( interval > max_poll_interval )) && max_poll_interval=${interval}
+    group_dir="${runtime_dir}/poll_groups/${interval}"
+    mv "${group_dir}/commands.txt.tmp" "${group_dir}/commands.txt"
+    mv "${group_dir}/template.tmpl.tmp" "${group_dir}/template.tmpl"
+done
 # A successful publication updates the heartbeat even for partially supported devices.
 # Allow three complete retry intervals and at least five minutes without data.
-health_max_age=$((3 * (REFRESH_RATE + COMMAND_TIMEOUT + 15)))
+health_max_age=$((3 * (max_poll_interval + COMMAND_TIMEOUT + 15)))
 (( health_max_age >= 300 )) || health_max_age=300
 printf '%s\n' "${health_max_age}" > "${runtime_dir}/health_max_age.tmp"
 mv "${runtime_dir}/health_max_age.tmp" "${runtime_dir}/health_max_age"
