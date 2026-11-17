@@ -9,7 +9,45 @@ Example: Command `getTempA` is executed and its return value is pushed into topi
 
 If you want to set values / write to Vitodens, simply write to a topic that has the name of the setter command as specified in **/etc/vcontrold/vito.xml**.
 
-Example: Writing a value to the topic `openv/setTempWWsoll` will set the target temperature for hot water to a new value. You will be able to see it in `openv/getTempWWsoll` in the next readout cycle.
+Example: Writing a value to the topic `openv/setTempWWsoll` will set the target temperature for hot water to a new value. When `getTempWWsoll` is in `commands`, the add-on reads it back right after the write and publishes it to `openv/getTempWWsoll` within seconds, without waiting for the next readout cycle.
+
+### Verified writes and acknowledgements
+
+Each setter `setX` is sent together with its getter `getX` in one vcontrold session:
+
+1. The value is written. A daemon error (for example `FRAMER: Error 0x15 != 0x06 (P300_INIT_OK)`
+   when the Optolink initialisation is not acknowledged) fails the attempt.
+2. If `getX` is in `commands`, it is read back immediately, published to `<mqtt_topic>/getX`
+   in the configured `FLOAT`/`STRING` format and compared with the value sent. Numbers match
+   within 0.05; text matches when equal after collapsing whitespace.
+3. A failed or different attempt is repeated after 3 seconds, up to `write_attempts` times
+   (default 3). Setters write absolute values, so repeating one is idempotent.
+
+The outcome is published, retained, to `<mqtt_topic>/ack/setX` as JSON:
+
+```json
+{"status":"ok","command":"setTempWWsoll","value":"44","readback":"44.000000 Grad Celsius","attempts":1,"error":"","timestamp":"2026-11-11T05:20:02Z"}
+```
+
+| `status` | meaning |
+|---|---|
+| `ok` | written and the read-back matches |
+| `unverified` | written without a daemon error, but not compared: `getX` is not in `commands`, or its value cannot be compared (multi-line timers, a number read back as text) |
+| `fail` | every attempt failed; `error` holds the last reason, `readback` the boiler's actual value if it could be read |
+
+A Home Assistant alert on failed writes can trigger on the acknowledgement topics:
+
+```yaml
+trigger:
+  - trigger: mqtt
+    topic: openv/ack/+
+    value_template: "{{ value_json.status }}"
+    payload: fail
+```
+
+The read cycle and setters share one Optolink. They take turns through a lock, so a setter
+waits for a running read cycle to finish publishing (a few seconds for a long command list),
+and a read cycle never overwrites a fresh read-back with a value it read before the write.
 
 ## Configuration
 
@@ -143,8 +181,9 @@ original XML files are never rewritten.
   `command_timeout` limits a whole vcontrold read cycle or one setter (1–3600 seconds,
   default 120). Increase it if a large command list or slow device needs more time.
   MQTT publications have a separate 10-second timeout, followed by forced termination
-  after another 5 seconds if needed. A failed poll is retried; setter writes are not
-  automatically replayed because their result can be uncertain after a timeout.
+  after another 5 seconds if needed. A failed poll is retried on the next cycle. One setter
+  attempt is limited to `command_timeout` or 30 seconds, whichever is shorter, and failed
+  setters are retried as described in *Verified writes and acknowledgements*.
 - The internal MQTT service is optional when `mqtt_host` specifies an external broker.
   Without `mqtt_host`, the extension waits for Supervisor's MQTT service and refreshes
   its credentials after connection failures. Install/start Mosquitto or configure an

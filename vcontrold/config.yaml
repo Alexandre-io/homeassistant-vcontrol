@@ -58,6 +58,7 @@ schema:
   tty: "str"
   refresh: "int(1,86400)"
   command_timeout: "int(1,3600)?"
+  write_attempts: "int(1,10)?"
   device_id: "str"
   vcontrol_host: "str?"
   vcontrol_port: "port?"

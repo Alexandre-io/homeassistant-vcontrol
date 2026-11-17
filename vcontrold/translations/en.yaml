@@ -8,6 +8,9 @@ configuration:
   command_timeout:
     name: "Command timeout"
     description: "Maximum duration of a vcontrold read cycle or setter, in seconds (default: 120). MQTT publications have a separate 10-second timeout."
+  write_attempts:
+    name: "Write attempts"
+    description: "Number of attempts for one MQTT setter (1–10, default: 3). Each attempt writes the value, reads the matching getter back in the same session and publishes it; a daemon error or a different read-back triggers the next attempt. The result is published to `<mqtt_topic>/ack/<setter>`."
   device_id:
     name: "Device ID"
     description: "The device identifier. (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"

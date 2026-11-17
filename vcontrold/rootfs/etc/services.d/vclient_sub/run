@@ -5,23 +5,213 @@
 # ==============================================================================
 
 declare -r services_dir="${SERVICES_DIR:-/etc/services.d}"
+declare -r runtime_dir="${RUNTIME_DIR:-/run/vcontrold}"
+declare -r link_lock_file="${runtime_dir}/link.lock"
+declare -r setter_output_file="${runtime_dir}/setter_values.txt"
+declare -r setter_template_file="${runtime_dir}/setter.tmpl"
+declare -r setter_verify_template_file="${runtime_dir}/setter_verify.tmpl"
+declare -r separator=$'\037'
+declare -r write_retry_delay="${WRITE_RETRY_DELAY:-3}"
 source "${services_dir}/get_mqtt_settings.sh"
 
 # Fetch Vcontrold settings
 source "${services_dir}/get_vcontrold_settings.sh"
+source "${services_dir}/command_utils.sh"
+source "${services_dir}/write_utils.sh"
 
 declare command
 declare payload
 declare request
-declare response
 declare topic
 declare value
+declare link_lock_fd
+declare -A getter_types=()
 
 # Ensure required environment variables are set
 if [[ -z "$MQTT_HOST" || -z "$MQTT_PORT" || -z "$MQTT_TOPIC" || -z "$REFRESH_RATE" || -z "$VCONTROL_HOST" || -z "$VCONTROL_PORT" ]]; then
     bashio::log.error "Missing required MQTT or Vcontrold environment variables."
     exit 1
 fi
+
+# One write attempt must fail fast; the number of attempts bounds the total.
+declare -r write_timeout=$(( COMMAND_TIMEOUT < 30 ? COMMAND_TIMEOUT : 30 ))
+# The poller holds the link for at most one read cycle plus its publications.
+declare -r link_lock_wait=$(( COMMAND_TIMEOUT + 15 ))
+
+load_getter_types "$(bashio::config 'commands')" getter_types
+
+umask 077
+mkdir -p "${runtime_dir}"
+# vclient record templates: US separates fields, RS ends a record.
+# shellcheck disable=SC2016 # vclient expands these placeholders.
+printf '$C1\037$E1\037$R1\036\n' > "${setter_template_file}"
+# shellcheck disable=SC2016 # vclient expands these placeholders.
+printf '$C1\037$E1\037$R1\036\n$C2\037$E2\037$2\037$R2\036\n' > "${setter_verify_template_file}"
+exec {link_lock_fd}>>"${link_lock_file}"
+
+# The poller and the setter share one Optolink. Holding this lock from the
+# read-back until its MQTT publication keeps a poll snapshot taken before the
+# write from overwriting the fresh value afterwards.
+acquire_link_lock() {
+    if ! flock -w "${link_lock_wait}" "${link_lock_fd}"; then
+        bashio::log.warning "Link lock not acquired within ${link_lock_wait}s; writing anyway."
+    fi
+}
+
+release_link_lock() {
+    flock -u "${link_lock_fd}" || true
+}
+
+# Send one setter, read its getter back in the same vcontrold session, publish
+# the read-back as state and retry on any error or mismatch. Setters write
+# absolute values, so repeating one is idempotent.
+execute_setter() {
+    local command=$1
+    local value=$2
+    local request=$3
+    local getter="get${command#set}"
+    local getter_type=${getter_types[${getter}]-}
+    local attempt=0
+    local status=fail
+    local error=""
+    local readback=""
+    local result
+
+    while (( attempt < WRITE_ATTEMPTS )); do
+        attempt=$((attempt + 1))
+        acquire_link_lock
+        run_setter_attempt "${command}" "${value}" "${request}" "${getter}" "${getter_type}" \
+            && result=0 || result=$?
+        release_link_lock
+        case "${result}" in
+            0) status=ok; break ;;
+            2) status=unverified; break ;;
+        esac
+        if (( attempt < WRITE_ATTEMPTS )); then
+            bashio::log.warning "Setter [${command}] attempt ${attempt}/${WRITE_ATTEMPTS} failed: ${error}. Retrying in ${write_retry_delay}s."
+            sleep "${write_retry_delay}"
+        fi
+    done
+
+    case "${status}" in
+        ok)
+            bashio::log.info "Command [${command}] executed and verified (attempt ${attempt})."
+            ;;
+        unverified)
+            bashio::log.info "Command [${command}] executed; read-back not verified: ${error}."
+            ;;
+        *)
+            bashio::log.error "Failed to execute command [${command}] with value: ${value} after ${attempt} attempts: ${error}"
+            ;;
+    esac
+    publish_ack "${status}" "${command}" "${value}" "${readback}" "${attempt}" "${error}"
+}
+
+# One vcontrold session: the setter, followed by its getter when it is polled.
+# Returns 0 when verified, 2 when executed but not verifiable and 1 to retry.
+# Sets error and readback in the caller's scope.
+run_setter_attempt() {
+    local command=$1
+    local value=$2
+    local request=$3
+    local getter=$4
+    local getter_type=$5
+    local template=${setter_template_file}
+    local exitcode record match
+    local record_index=0
+    local -a fields=()
+    local set_status="" get_status="" get_number="" get_raw=""
+
+    if [[ -n "${getter_type}" ]]; then
+        request="${request},${getter}"
+        template=${setter_verify_template_file}
+    fi
+
+    rm -f "${setter_output_file}"
+    if timeout --kill-after=5 "${write_timeout}" \
+        vclient -h "${VCONTROL_HOST}" -p "${VCONTROL_PORT}" -c "${request}" \
+        -t "${template}" -o "${setter_output_file}"; then
+        :
+    else
+        exitcode=$?
+        if [[ "${exitcode}" == 124 || "${exitcode}" == 137 ]]; then
+            error="vclient timed out after ${write_timeout}s"
+        else
+            error="vclient exited with code ${exitcode}"
+        fi
+        return 1
+    fi
+
+    # Records follow the request order: the setter first, then its getter.
+    # vclient's $C holds the whole command line, so match by position.
+    while IFS= read -r -d $'\036' record; do
+        record=${record#$'\n'}
+        fields=()
+        IFS="${separator}" read -r -d '' -a fields <<< "${record}" || true
+        record_index=$((record_index + 1))
+        if (( record_index == 1 )) && [[ "${fields[0]-}" == "${request%%,*}" ]]; then
+            set_status=${fields[1]-}
+        elif (( record_index == 2 )) && [[ "${fields[0]-}" == "${getter}" ]]; then
+            get_status=${fields[1]-}
+            get_number=${fields[2]-}
+            get_raw=${fields[3]-}
+            get_raw=${get_raw%$'\n'}
+        fi
+    done < "${setter_output_file}"
+
+    if [[ "${set_status}" != OK ]]; then
+        error=$(single_line "${set_status:-no response from vcontrold}")
+        return 1
+    fi
+    if [[ -z "${getter_type}" ]]; then
+        error="${getter} is not in the polled commands"
+        return 2
+    fi
+    if [[ "${get_status}" != OK ]]; then
+        error="read-back failed: $(single_line "${get_status:-no response from vcontrold}")"
+        return 1
+    fi
+
+    readback=${get_raw}
+    # Publish exactly what the poller would publish for this getter.
+    if [[ "${getter_type}" == STRING ]]; then
+        publish_state "${getter}" "${get_raw}"
+    else
+        publish_state "${getter}" "${get_number}"
+    fi
+
+    setter_readback_matches "${value}" "${get_raw}" && match=0 || match=$?
+    case "${match}" in
+        0) error=""; return 0 ;;
+        2) error="read-back '$(single_line "${get_raw}")' is not comparable"; return 2 ;;
+    esac
+    error="read-back '$(single_line "${get_raw}")' differs from '${value}'"
+    return 1
+}
+
+publish_state() {
+    local getter=$1
+    local state=$2
+
+    if ! timeout --kill-after=5 10 mosquitto_pub -h "${MQTT_HOST}" -p "${MQTT_PORT}" \
+        "${MQTT_AUTH_ARGS[@]}" -q 1 -r -t "${MQTT_TOPIC}/${getter}" -m "${state}"; then
+        bashio::log.warning "MQTT publication of read-back ${getter} failed; the next poll will publish it."
+    fi
+}
+
+publish_ack() {
+    local command=$2
+    local ack
+
+    if ! ack=$(setter_ack_json "$@"); then
+        bashio::log.warning "Could not build the acknowledgement for ${command}."
+        return 0
+    fi
+    if ! timeout --kill-after=5 10 mosquitto_pub -h "${MQTT_HOST}" -p "${MQTT_PORT}" \
+        "${MQTT_AUTH_ARGS[@]}" -q 1 -r -t "${MQTT_TOPIC}/ack/${command}" -m "${ack}"; then
+        bashio::log.warning "MQTT publication of the acknowledgement for ${command} failed."
+    fi
+}
 
 bashio::log.info "Starting MQTT subscription to topic: ${MQTT_TOPIC}/#"
 
@@ -54,17 +244,13 @@ while true; do
         fi
 
         # vclient 0.98.12 uses a 512-byte command buffer, including the terminator.
-        if (( $(LC_ALL=C printf '%s' "${request}" | wc -c) > 511 )); then
+        # Leave room for the read-back getter appended to the same request.
+        if (( $(LC_ALL=C printf '%s' "${request},get${command#set}" | wc -c) > 511 )); then
             bashio::log.warning "Ignoring oversized setter request for ${command}."
             continue
         fi
 
-        if response=$(timeout --kill-after=5 "${COMMAND_TIMEOUT}" vclient -h "$VCONTROL_HOST" -p "$VCONTROL_PORT" -J -c "${request}") \
-            && jq -e 'type == "array" and length == 1 and .[0].error == ""' <<< "${response}" >/dev/null; then
-            bashio::log.info "Command [${command}] executed successfully."
-        else
-            bashio::log.error "Failed to execute command [${command}] with value: ${value}"
-        fi
+        execute_setter "${command}" "${value}" "${request}" || true
     done; then
         bashio::log.info "MQTT subscription closed."
     else

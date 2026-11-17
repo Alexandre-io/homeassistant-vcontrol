@@ -34,6 +34,37 @@ class Boiler(socketserver.ThreadingTCPServer):
         self.stalled = False
         self.value = "21.5 Grad Celsius"
         self.commands = []
+        # Per-getter raw values; setters update the matching getter.
+        self.values = {}
+        # Answer this many upcoming setters with an Optolink framer error.
+        self.setter_errors = 0
+        # False simulates a write the boiler acknowledges but does not apply.
+        self.apply_setters = True
+        self.delay = 0.0
+        self.lock = threading.Lock()
+
+    def respond(self, command):
+        if self.value.startswith("ERR:"):
+            return self.value
+        name, _, argument = command.partition(" ")
+        time.sleep(self.delay)
+        with self.lock:
+            if name.startswith("set"):
+                if self.setter_errors > 0:
+                    self.setter_errors -= 1
+                    return FRAMER_ERROR
+                if self.apply_setters:
+                    unit = " Grad Celsius" if argument.replace(".", "", 1).isdigit() else ""
+                    self.values["get" + name[3:]] = argument + unit
+                return "OK"
+            return self.values.get(name, self.value)
+
+
+# What vcontrold returns when the P300 link initialisation is answered with NAK.
+FRAMER_ERROR = (
+    "ERR: >FRAMER: Error 0x15 != 0x06 (P300_INIT_OK)\n"
+    "Error in send, terminating\nError executing command"
+)
 
 
 class BoilerConnection(socketserver.StreamRequestHandler):
@@ -50,7 +81,7 @@ class BoilerConnection(socketserver.StreamRequestHandler):
                     # A peer making partial progress defeats vclient's per-byte alarm.
                     self.wfile.write(b" ")
                     time.sleep(0.1)
-                self.wfile.write((self.server.value + "\nvctrld>").encode())
+                self.wfile.write((self.server.respond(command) + "\nvctrld>").encode())
         except (BrokenPipeError, ConnectionResetError):
             pass
 
@@ -74,8 +105,12 @@ class RuntimeTests(unittest.TestCase):
         self.cache = Path(self.tmp.name, "cache")
         self.cache.mkdir()
         os.environ["CACHE_DIR"] = str(self.cache)
+        os.environ["WRITE_RETRY_DELAY"] = "0.2"
         Path("/data").mkdir(exist_ok=True)
         shutil.rmtree("/run/vcontrold", ignore_errors=True)
+        self.prepare_runtime()
+
+    def prepare_runtime(self):
         self.write_options()
         # Only generate runtime files: use the documented remote-daemon branch.
         options = dict(self.options, vcontrol_host="boiler.test")
@@ -236,6 +271,119 @@ class RuntimeTests(unittest.TestCase):
         result = self.run_script("vcontrold/run", env={"TAIL_BIN": "/bin/true"})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(Path("/run/vcontrold/1_mqtt_commands.txt").read_text(), "getTempA\n")
+
+    # --- verified setters ---
+
+    def poll_setter_target(self):
+        self.options["commands"] = ["getTempWWsoll:FLOAT", "getBetriebArtM2:STRING"]
+        self.prepare_runtime()
+        self.boiler.values = {
+            "getTempWWsoll": "11.000000 Grad Celsius", "getBetriebArtM2": "WW",
+        }
+
+    def start_subscriber(self):
+        _, log = self.start(["bashio", "/etc/services.d/vclient_sub/run"], "sub")
+        wait_for(lambda: "Starting MQTT subscription" in log.read_text())
+        time.sleep(0.5)
+        return log
+
+    def read_ack(self, setter):
+        return json.loads(self.read_message("openv/ack/" + setter))
+
+    def test_verified_setter_publishes_readback_and_ack(self):
+        self.poll_setter_target()
+        self.start_broker()
+        self.start_subscriber()
+        subprocess.run(["mosquitto_pub", "-t", "openv/setTempWWsoll", "-m", "44"], check=True)
+        ack = self.read_ack("setTempWWsoll")
+        self.assertEqual(ack["status"], "ok", ack)
+        self.assertEqual(ack["attempts"], 1, ack)
+        self.assertEqual(ack["readback"], "44 Grad Celsius", ack)
+        # Published on the poller's state topic in the poller's FLOAT format.
+        self.assertEqual(self.read_message("openv/getTempWWsoll"), "44.000000")
+        # Setter and read-back travel in one vcontrold session.
+        index = self.boiler.commands.index("setTempWWsoll 44")
+        self.assertEqual(self.boiler.commands[index + 1], "getTempWWsoll")
+
+    def test_string_setter_is_verified_as_text(self):
+        self.poll_setter_target()
+        self.start_broker()
+        self.start_subscriber()
+        subprocess.run(["mosquitto_pub", "-t", "openv/setBetriebArtM2", "-m", "H+WW FS"], check=True)
+        ack = self.read_ack("setBetriebArtM2")
+        self.assertEqual(ack["status"], "ok", ack)
+        self.assertEqual(self.read_message("openv/getBetriebArtM2"), "H+WW FS")
+
+    def test_framer_error_is_retried_until_the_write_lands(self):
+        self.poll_setter_target()
+        self.boiler.setter_errors = 2
+        self.start_broker()
+        log = self.start_subscriber()
+        subprocess.run(["mosquitto_pub", "-t", "openv/setTempWWsoll", "-m", "44"], check=True)
+        ack = self.read_ack("setTempWWsoll")
+        self.assertEqual(ack["status"], "ok", ack)
+        self.assertEqual(ack["attempts"], 3, ack)
+        self.assertEqual(self.boiler.commands.count("setTempWWsoll 44"), 3)
+        self.assertIn("P300_INIT_OK", log.read_text())
+
+    def test_exhausted_retries_report_fail_and_true_state(self):
+        self.poll_setter_target()
+        self.boiler.apply_setters = False
+        self.start_broker()
+        log = self.start_subscriber()
+        subprocess.run(["mosquitto_pub", "-t", "openv/setTempWWsoll", "-m", "44"], check=True)
+        ack = self.read_ack("setTempWWsoll")
+        self.assertEqual(ack["status"], "fail", ack)
+        self.assertEqual(ack["attempts"], 3, ack)
+        self.assertIn("differs", ack["error"])
+        # The entity shows what the boiler really holds, not what was requested.
+        self.assertEqual(self.read_message("openv/getTempWWsoll"), "11.000000")
+        self.assertIn("Failed to execute command [setTempWWsoll]", log.read_text())
+
+    def test_write_attempts_option_limits_retries(self):
+        self.poll_setter_target()
+        self.options["write_attempts"] = 1
+        self.write_options()
+        self.boiler.setter_errors = 5
+        self.start_broker()
+        self.start_subscriber()
+        subprocess.run(["mosquitto_pub", "-t", "openv/setTempWWsoll", "-m", "44"], check=True)
+        ack = self.read_ack("setTempWWsoll")
+        self.assertEqual((ack["status"], ack["attempts"]), ("fail", 1), ack)
+
+    def test_setter_without_polled_getter_is_unverified(self):
+        self.start_broker()
+        self.start_subscriber()
+        subprocess.run(["mosquitto_pub", "-t", "openv/setTempRaumNorSollM1", "-m", "21"], check=True)
+        ack = self.read_ack("setTempRaumNorSollM1")
+        self.assertEqual(ack["status"], "unverified", ack)
+        self.assertEqual(ack["attempts"], 1, ack)
+        self.assertNotIn("getTempRaumNorSollM1", self.boiler.commands)
+
+    def test_poll_snapshot_does_not_overwrite_readback(self):
+        self.poll_setter_target()
+        # A slow link: one poll takes about 1.5 s, like a long command list.
+        self.options["commands"] = ["getTempWWsoll:FLOAT"] + [
+            f"getFiller{i}:FLOAT" for i in range(5)
+        ]
+        self.options["command_timeout"] = 10
+        self.prepare_runtime()
+        self.boiler.delay = 0.25
+        self.start_broker()
+        watcher = subprocess.Popen(
+            ["mosquitto_sub", "-h", "127.0.0.1", "-t", "openv/getTempWWsoll", "-W", "9"],
+            stdout=subprocess.PIPE, text=True,
+        )
+        self.start_subscriber()
+        self.start(["bashio", "/etc/services.d/vclient_pub/run"], "pub")
+        # Write right after the poll has read the old value.
+        wait_for(lambda: "getFiller0" in self.boiler.commands)
+        subprocess.run(["mosquitto_pub", "-t", "openv/setTempWWsoll", "-m", "44"], check=True)
+        values, _ = watcher.communicate(timeout=15)
+        values = values.split()
+        self.assertIn("44.000000", values)
+        first = values.index("44.000000")
+        self.assertNotIn("11.000000", values[first:], values)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,12 @@
 <!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
 
+## Unreleased
+
+- Verify every MQTT setter: read the matching getter back in the same vcontrold session, compare it with the value sent and retry on daemon errors or mismatches (`write_attempts`, default 3)
+- Publish the read-back to the getter's state topic immediately instead of after the next read cycle
+- Publish a retained JSON acknowledgement (`ok` / `unverified` / `fail`) to `<mqtt_topic>/ack/<setter>`
+- Serialise the read cycle and setters with a shared lock so a poll snapshot cannot overwrite a fresh read-back
+
 ## 1.14.0
 
 - Recover from MQTT service unavailability and broker restarts without halting the entire extension

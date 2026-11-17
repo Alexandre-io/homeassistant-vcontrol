@@ -8,6 +8,9 @@ configuration:
   command_timeout:
     name: "Zeitlimit für Befehle"
     description: "Maximale Dauer eines vcontrold-Lesezyklus oder Schreibbefehls in Sekunden (Standard: 120). MQTT-Veröffentlichungen haben ein separates Zeitlimit von 10 Sekunden."
+  write_attempts:
+    name: "Schreibversuche"
+    description: "Anzahl der Versuche für einen MQTT-Setter (1–10, Standard: 3). Jeder Versuch schreibt den Wert, liest den passenden Getter in derselben Sitzung zurück und veröffentlicht ihn; ein Fehler des Daemons oder ein abweichender Rücklesewert löst den nächsten Versuch aus. Das Ergebnis wird unter `<mqtt_topic>/ack/<setter>` veröffentlicht."
   device_id:
     name: "Device ID"
     description: "Viessmann Gerätekennung (2098 => V200KW2 , 2053 => GWG_VBEM, 20CB => VScotHO1 , 2094 => V200KW1)"

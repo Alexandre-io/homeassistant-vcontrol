@@ -2,10 +2,14 @@
 
 REFRESH_RATE=$(bashio::config 'refresh')
 COMMAND_TIMEOUT=120
+WRITE_ATTEMPTS=3
 VCONTROL_HOST=localhost
 VCONTROL_PORT=3002
 if bashio::config.has_value 'command_timeout'; then
     COMMAND_TIMEOUT=$(bashio::config 'command_timeout')
+fi
+if bashio::config.has_value 'write_attempts'; then
+    WRITE_ATTEMPTS=$(bashio::config 'write_attempts')
 fi
 if bashio::config.has_value 'vcontrol_host'; then
     VCONTROL_HOST=$(bashio::config 'vcontrol_host')
@@ -20,8 +24,11 @@ fi
 if [[ ! "${COMMAND_TIMEOUT}" =~ ^[1-9][0-9]{0,3}$ ]] || (( COMMAND_TIMEOUT > 3600 )); then
     bashio::exit.nok "command_timeout must be between 1 and 3600 seconds."
 fi
+if [[ ! "${WRITE_ATTEMPTS}" =~ ^[1-9][0-9]?$ ]] || (( WRITE_ATTEMPTS > 10 )); then
+    bashio::exit.nok "write_attempts must be between 1 and 10."
+fi
 if [[ ! "${VCONTROL_PORT}" =~ ^[1-9][0-9]{0,4}$ ]] || (( VCONTROL_PORT > 65535 )); then
     bashio::exit.nok "vcontrol_port must be between 1 and 65535."
 fi
-export REFRESH_RATE COMMAND_TIMEOUT VCONTROL_HOST VCONTROL_PORT
+export REFRESH_RATE COMMAND_TIMEOUT WRITE_ATTEMPTS VCONTROL_HOST VCONTROL_PORT
 bashio::log.info "vcontrold endpoint: ${VCONTROL_HOST}:${VCONTROL_PORT}; poll timeout: ${COMMAND_TIMEOUT}s."
